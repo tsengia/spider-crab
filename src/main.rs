@@ -4,7 +4,7 @@ use reqwest::Client;
 
 #[tokio::main]
 async fn main() -> std::result::Result<(), std::io::Error> {
-    let matches = Command::new("Webpage Checker")
+    let matches = Command::new("Spider Crab")
         .version("0.0.1")
         .about("Checks links and images in a webpage.")
         .author("Tyler Sengia")
@@ -20,7 +20,7 @@ async fn main() -> std::result::Result<(), std::io::Error> {
             .help("Enable checking of webpages under the same domain that are linked to by the target URL"))
         .get_matches();
 
-    println!("Webpage Checker");
+    println!("Spider Crab");
     if !matches.contains_id("url") {
         return Err("No Target URL supplied!");
     }
