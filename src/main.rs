@@ -1,26 +1,40 @@
 use clap::{Arg, ArgAction, Command};
 use scraper::{Html, Selector};
 use reqwest::Client;
+use petgraph::graph::{DiGraph, NodeIndex};
+use std::collections::HashMap;
 
 #[derive(Debug)]
-struct LinkPair {
-    source_page: String,
-    target_page: String,
-    message: String
+struct SpiderError {
+    url: String,
+    referenced_by: String,
+    error_code: reqwest::Error
 }
 
-#[derive(Debug)]
-struct SpiderOptions {
+struct SpiderOptions<'a> {
     max_depth: i32,
-    domain_name: String,
-    link_selector: &Selector
+    domain_name: &'a str,
+    link_selector: &'a Selector,
+    title_selector: &'a Selector,
+    client: &'a Client
 }
 
-#[derive(Debug)]
-struct SpiderContext {
-    current_depth: i32,
-    bad_links: Vec<LinkPair>,
-    good_links: Vec<LinkPair>
+struct Link {
+    visited: bool
+}
+
+struct Page {
+    title: String,
+    filetype: String,
+    good: bool,
+    checked: bool,
+    url: String
+}
+
+struct SpiderContext<'a> {
+    page_map: &'a mut HashMap<String, NodeIndex>,
+    graph: &'a mut DiGraph<Page, Link>,
+    current_depth: i32
 }
 
 async fn get_document(url: &str, client: &Client) 
@@ -39,44 +53,72 @@ async fn get_document(url: &str, client: &Client)
     Ok(document)
 }
 
-async fn visit_page(url: &str, mut context: SpiderContext, options: &SpiderOptions, client: &Client) 
-    -> Result<(), bool> {
-    let document = get_document(url, client).await;
+async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, context: &mut SpiderContext<'a>) 
+    -> Result<(),Box<dyn std::error::Error>> {
 
-    if document.is_err() {
-        return Err(false)
-    }
+    let &mut page = context.graph[node_index];
 
-    let html = document.unwrap();
+    // let document = get_document(page.url.as_str(), options.client).await;
 
-    let links = html.select(options.link_selector);
+    // page.checked = true;
+    // if document.is_err() {
+    //     page.good = false;
+    //     //return Err(false)
+    // }
 
-    for l in links {
-        let href_attribute = l.attr("href");
+    // let html = document.unwrap();
 
-        if href_attribute.is_none() {
-            context.bad_links.append(LinkPair { 
-                message: "Empty href attribute!",
-                source_page: url,
-                target_page: ""
-             });
-            continue;
-        }
+    // let links = html.select(options.link_selector);
 
-        let new_url = href_attribute.unwrap();
+    // for l in links {
+    //     let href_attribute = l.attr("href");
 
-        if new_url.len() == 0 {
-            context.bad_links.append(LinkPair { 
-                message: "Empty href attribute!",
-                source_page: url,
-                target_page: ""
-             });
-            continue;
-        }
-    }
+    //     if href_attribute.is_none() {
+    //         /// TODO: Add bad edge to graph for missing href attribute
+    //         continue;
+    //     }
 
+    //     let next_url = href_attribute.unwrap();
+
+    //     if next_url.len() == 0 {
+    //         /// TODO: Add bad edge to graph for empty href attribute
+    //         continue;
+    //     }
+
+    //     let existing_page = context.page_map.get(next_url);
+    //     if existing_page.is_some() {
+    //         // Target page has already been visited
+    //         context.graph.add_edge(node_index, *existing_page.unwrap(), Link { visited: true });
+    //         continue;
+    //     }
+
+    //     // Target page has not been visited yet
+    //     let new_page = context.graph.add_node(Page {
+    //         url: next_url.to_string(),
+    //         title: "".to_string(),
+    //         filetype: "".to_string(),
+    //         good: false,
+    //         checked: false
+    //     });
+
+    //     // TODO: Spawn up tasks for visiting added pages
+    // }
 
     Ok(())
+}
+
+async fn visit_root_page<'a>(url: &str, options: &SpiderOptions<'a>, context: &mut SpiderContext<'a>)
+    -> Result<(), Box<dyn std::error::Error>> {
+
+    let root_index = context.graph.add_node(Page {
+        title: String::new(),
+        filetype: String::new(),
+        good: false,
+        checked: false,
+        url: String::from(url)
+    });
+
+    return visit_page(root_index, options, context).await;
 }
 
 #[tokio::main]
@@ -89,27 +131,53 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             .action(ArgAction::Set)
             .required(true)
             .help("URL of the webpage to check."))
-        .arg(Arg::new("crawl")
-            .short('c')
-            .long("crawl")
-            .action(ArgAction::SetTrue)
-            .help("Enable checking of webpages under the same domain that are linked to by the target URL"))
+        .arg(Arg::new("depth")
+            .short('d')
+            .long("depth")
+            .action(ArgAction::Set)
+            .default_value("-1")
+            .help("Depth of links to check. Default is -1 which is unlimited."))
         .get_matches();
 
     println!("Spider Crab");
 
-    let url = matches.get_one::<String>("url").expect("No URL supplied!");
-    println!("Target URL: {}", url);
+    let url = matches.get_one::<String>("url").expect("No URL supplied!").as_str();
+    
+    let depth: i32 = *matches.get_one::<i32>("depth").expect("Invalid depth!");
 
     let client: Client = Client::new();
+    let link_selector = Selector::parse("a").expect("Invalid link selector!");
+    let title_selector = Selector::parse("title").expect("Invalid title selector!");
 
-    link_selector = Selector::parse("a").expect("Invalid link selector!");
+    let options = SpiderOptions {
+        client: &client,
+        max_depth: depth,
+        link_selector: &link_selector,
+        title_selector: &title_selector,
+        domain_name: url
+    };
 
-    let contents = get_document(url, &client).await.expect("Failed to retrieve page!");
+    let mut map = HashMap::<String, NodeIndex>::new();
+    let mut graph = DiGraph::<Page, Link>::new();
 
-    let links = contents.select(&link_selector);
+    graph.reserve_edges(200);
+    graph.reserve_nodes(50);
 
-    println!("Link count: {}", links.count());
+    let mut context = SpiderContext {
+        page_map: &mut map,
+        graph: &mut graph,
+        current_depth: 0
+    };
 
+    let result = visit_root_page(url, &options, &mut context).await;
+
+    if result.is_ok() {
+        println!("All links good!");
+    }
+    else {
+        println!("Something failed!");
+    }
+
+    // TODO: Check value of result and report back error code
     Ok(())
 }
