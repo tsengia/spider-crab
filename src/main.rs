@@ -2,7 +2,7 @@ use clap::{Arg, ArgAction, Command};
 use scraper::{Html, Selector};
 use reqwest::Client;
 use petgraph::graph::{DiGraph, NodeIndex};
-use std::collections::HashMap;
+use std::{collections::HashMap, clone, sync::Arc, sync::Mutex};
 
 #[derive(Debug)]
 struct SpiderError {
@@ -33,7 +33,7 @@ struct Page {
 
 struct SpiderContext<'a> {
     page_map: &'a mut HashMap<String, NodeIndex>,
-    graph: &'a mut DiGraph<Page, Link>,
+    graph: &'a mut DiGraph<Arc<Mutex<Page>>, Arc<Mutex<Link>>>,
     current_depth: i32
 }
 
@@ -55,54 +55,68 @@ async fn get_document(url: &str, client: &Client)
 
 async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, context: &mut SpiderContext<'a>) 
     -> Result<(),Box<dyn std::error::Error>> {
+        
+    let graph = context.graph;
+    let mut page = graph.node_weight_mut(node_index).unwrap().lock().unwrap();
 
-    let &mut page = context.graph[node_index];
+    let document = get_document(page.url.as_str(), options.client).await;
 
-    // let document = get_document(page.url.as_str(), options.client).await;
+    page.checked = true;
+    if document.is_err() {
+        page.good = false;
+        //return Err(false)
+    }
 
-    // page.checked = true;
-    // if document.is_err() {
-    //     page.good = false;
-    //     //return Err(false)
-    // }
+    let html = document.unwrap();
 
-    // let html = document.unwrap();
+    let links = html.select(options.link_selector);
 
-    // let links = html.select(options.link_selector);
+    let mut new_nodes = Vec::<NodeIndex>::new();
+    // Reserve some space for our new node indices. 
+    // Sadly, we can't use links.count() here because it consumes the iterator, which leaves us
+    // with no iterator to iterate over the selected elements with
+    new_nodes.reserve(32);
 
-    // for l in links {
-    //     let href_attribute = l.attr("href");
+    for l in links {
+        let href_attribute = l.attr("href");
 
-    //     if href_attribute.is_none() {
-    //         /// TODO: Add bad edge to graph for missing href attribute
-    //         continue;
-    //     }
+        if href_attribute.is_none() {
+            /// TODO: Add bad edge to graph for missing href attribute
+            continue;
+        }
 
-    //     let next_url = href_attribute.unwrap();
+        let next_url = href_attribute.unwrap();
 
-    //     if next_url.len() == 0 {
-    //         /// TODO: Add bad edge to graph for empty href attribute
-    //         continue;
-    //     }
+        if next_url.len() == 0 {
+            /// TODO: Add bad edge to graph for empty href attribute
+            continue;
+        }
 
-    //     let existing_page = context.page_map.get(next_url);
-    //     if existing_page.is_some() {
-    //         // Target page has already been visited
-    //         context.graph.add_edge(node_index, *existing_page.unwrap(), Link { visited: true });
-    //         continue;
-    //     }
+        let existing_page = context.page_map.get(next_url);
+        if existing_page.is_some() {
+            // Target page has already been visited
+            graph.add_edge(node_index, 
+                *existing_page.unwrap(), 
+                Arc::new(Mutex::new(
+                    Link { visited: true }
+                )));
+            continue;
+        }
+        
+        // Target page has not been visited yet
+        let new_node = graph.add_node(
+            Arc::new(Mutex::new(
+                Page {
+                url: next_url.to_string(),
+                title: "".to_string(),
+                filetype: "".to_string(),
+                good: false,
+                checked: false
+            }
+        )));
 
-    //     // Target page has not been visited yet
-    //     let new_page = context.graph.add_node(Page {
-    //         url: next_url.to_string(),
-    //         title: "".to_string(),
-    //         filetype: "".to_string(),
-    //         good: false,
-    //         checked: false
-    //     });
-
-    //     // TODO: Spawn up tasks for visiting added pages
-    // }
+        new_nodes.push(new_node);
+    }
 
     Ok(())
 }
@@ -110,13 +124,13 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, cont
 async fn visit_root_page<'a>(url: &str, options: &SpiderOptions<'a>, context: &mut SpiderContext<'a>)
     -> Result<(), Box<dyn std::error::Error>> {
 
-    let root_index = context.graph.add_node(Page {
+    let root_index = context.graph.add_node(Arc::new(Mutex::new(Page {
         title: String::new(),
         filetype: String::new(),
         good: false,
         checked: false,
         url: String::from(url)
-    });
+    })));
 
     return visit_page(root_index, options, context).await;
 }
@@ -158,7 +172,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     };
 
     let mut map = HashMap::<String, NodeIndex>::new();
-    let mut graph = DiGraph::<Page, Link>::new();
+    let mut graph = DiGraph::<Arc<Mutex<Page>>, Arc<Mutex<Link>>>::new();
 
     graph.reserve_edges(200);
     graph.reserve_nodes(50);
