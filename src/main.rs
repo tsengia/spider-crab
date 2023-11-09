@@ -33,7 +33,7 @@ struct Page {
 
 struct SpiderContext<'a> {
     page_map: &'a mut HashMap<String, NodeIndex>,
-    graph: &'a mut DiGraph<Arc<Mutex<Page>>, Arc<Mutex<Link>>>,
+    graph: &'a mut DiGraph<Arc<Mutex<&'a mut Page>>, Arc<Mutex<Link>>>,
     current_depth: i32
 }
 
@@ -57,7 +57,10 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, cont
     -> Result<(),Box<dyn std::error::Error>> {
         
     let graph = context.graph;
-    let mut page = graph.node_weight_mut(node_index).unwrap().lock().unwrap();
+    let page_map = context.page_map;
+    
+    let page_arc = graph.node_weight_mut(node_index).unwrap();
+    let page = page_arc.lock().unwrap();
 
     let document = get_document(page.url.as_str(), options.client).await;
 
@@ -92,7 +95,7 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, cont
             continue;
         }
 
-        let existing_page = context.page_map.get(next_url);
+        let existing_page = page_map.get(next_url);
         if existing_page.is_some() {
             // Target page has already been visited
             graph.add_edge(node_index, 
