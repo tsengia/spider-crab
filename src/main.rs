@@ -2,7 +2,7 @@ use clap::{Arg, ArgAction, Command};
 use scraper::{Html, Selector};
 use reqwest::Client;
 use petgraph::graph::{DiGraph, NodeIndex};
-use std::{collections::HashMap, clone, sync::Arc, sync::Mutex};
+use std::{collections::HashMap, sync::Arc, sync::Mutex};
 
 #[derive(Debug)]
 struct SpiderError {
@@ -31,11 +31,8 @@ struct Page {
     url: String
 }
 
-struct SpiderContext<'a> {
-    page_map: &'a mut HashMap<String, NodeIndex>,
-    graph: &'a mut DiGraph<Arc<Mutex<&'a mut Page>>, Arc<Mutex<Link>>>,
-    current_depth: i32
-}
+type PageMap = HashMap<String, NodeIndex>;
+type PageGraph = DiGraph<Arc<Mutex<Page>>, Arc<Mutex<Link>>>;
 
 async fn get_document(url: &str, client: &Client) 
     -> Result<Html, Box<dyn std::error::Error>> {
@@ -53,26 +50,28 @@ async fn get_document(url: &str, client: &Client)
     Ok(document)
 }
 
-async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, context: &mut SpiderContext<'a>) 
+async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, graph: &mut PageGraph, page_map: &mut PageMap, current_depth: i32) 
     -> Result<(),Box<dyn std::error::Error>> {
-        
-    let graph = context.graph;
-    let page_map = context.page_map;
     
     let page_arc = graph.node_weight_mut(node_index).unwrap();
-    let page = page_arc.lock().unwrap();
+    let html: Box<Html>;
+    {
+        let page = &mut page_arc.lock().unwrap();
 
-    let document = get_document(page.url.as_str(), options.client).await;
+        let document = get_document(page.url.as_str(), options.client).await;
 
-    page.checked = true;
-    if document.is_err() {
-        page.good = false;
-        //return Err(false)
+        page.checked = true;
+        if document.is_err() {
+            page.good = false;
+            //return Err(false)
+        }
+
+        html = Box::<Html>::new(document.unwrap());
     }
 
-    let html = document.unwrap();
-
+    
     let links = html.select(options.link_selector);
+
 
     let mut new_nodes = Vec::<NodeIndex>::new();
     // Reserve some space for our new node indices. 
@@ -118,16 +117,23 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, cont
             }
         )));
 
+        if current_depth == options.max_depth {
+            // If we have reached max depth, then do not add the new node to the
+            // new_nodes list. This prevents us from visiting those nodes after
+            // this loop finishes
+            continue;
+        }
+
         new_nodes.push(new_node);
     }
 
     Ok(())
 }
 
-async fn visit_root_page<'a>(url: &str, options: &SpiderOptions<'a>, context: &mut SpiderContext<'a>)
+async fn visit_root_page<'a>(url: &str, options: &SpiderOptions<'a>, graph: &mut PageGraph, page_map: &mut PageMap)
     -> Result<(), Box<dyn std::error::Error>> {
 
-    let root_index = context.graph.add_node(Arc::new(Mutex::new(Page {
+    let root_index = graph.add_node(Arc::new(Mutex::new(Page {
         title: String::new(),
         filetype: String::new(),
         good: false,
@@ -135,7 +141,7 @@ async fn visit_root_page<'a>(url: &str, options: &SpiderOptions<'a>, context: &m
         url: String::from(url)
     })));
 
-    return visit_page(root_index, options, context).await;
+    return visit_page(root_index, options, graph, page_map, 0).await;
 }
 
 #[tokio::main]
@@ -180,13 +186,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     graph.reserve_edges(200);
     graph.reserve_nodes(50);
 
-    let mut context = SpiderContext {
-        page_map: &mut map,
-        graph: &mut graph,
-        current_depth: 0
-    };
-
-    let result = visit_root_page(url, &options, &mut context).await;
+    let result = visit_root_page(url, &options, &mut graph, &mut map).await;
 
     if result.is_ok() {
         println!("All links good!");
