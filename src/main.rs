@@ -84,14 +84,14 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, cont
         let href_attribute = l.attr("href");
 
         if href_attribute.is_none() {
-            /// TODO: Add bad edge to graph for missing href attribute
+            // TODO: Add bad edge to graph for missing href attribute
             continue;
         }
 
         let next_url = href_attribute.unwrap();
 
         if next_url.len() == 0 {
-            /// TODO: Add bad edge to graph for empty href attribute
+            // TODO: Add bad edge to graph for empty href attribute
             continue;
         }
 
