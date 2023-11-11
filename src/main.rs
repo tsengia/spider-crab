@@ -1,6 +1,6 @@
 use clap::{Arg, ArgAction, Command};
 use scraper::{Html, Selector};
-use reqwest::Client;
+use reqwest::{Client, Response};
 use url::{Url, ParseError};
 use petgraph::graph::{DiGraph, NodeIndex};
 use std::{collections::HashMap, sync::Mutex};
@@ -22,7 +22,7 @@ struct Link {
 
 struct Page {
     title: String,
-    filetype: String,
+    content_type: String,
     good: bool,
     checked: bool,
     url: Url
@@ -30,21 +30,6 @@ struct Page {
 
 type PageMap = HashMap<Url, NodeIndex>;
 type PageGraph = DiGraph<Page, Link>;
-
-async fn get_document(url: &Url, client: &Client) 
-    -> Result<Html, Box<dyn std::error::Error>> {
-    // Send an HTTP(S) GET request for the desired URL
-    let response = client.request(reqwest::Method::GET, url.clone()).send().await?;
-    // Get the Contents of the page
-    let contents = response.text().await?;
-
-    // TODO: Detect the type of document that we've retrieved by using the Content-Type header
-
-    // Parse the page into an HTML document
-    let document = Html::parse_document(contents.as_str());
-
-    Ok(document)
-}
 
 #[async_recursion]
 async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, graph_mutex: &Mutex<&mut PageGraph>, page_map_mutex: &Mutex<&mut PageMap>, current_depth: i32) -> bool {
@@ -63,21 +48,57 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
 
     {
         // Start of new scope, this is to get the document, parse links, and update the graph
-        let document = get_document(&url, options.client).await;
-        let is_good = !document.is_err();
-        let html = document.unwrap();
 
-        // Acquire a lock on the graph so that we can update it with the discovered nodes
+        // Send an HTTP(S) GET request for the desired URL
+        let response_result = options.client.request(reqwest::Method::GET, url.clone()).send().await;
+        let response: Response;
+        let is_good = !response_result.is_err();
+
+        {
+            // Acquire a lock on the graph so that we can update it with our findings for this page
+            let mut graph = graph_mutex.lock().unwrap();
+            let page = graph.node_weight_mut(node_index).unwrap();
+
+            if !is_good {
+                page.good = false;
+                if !options.quiet {
+                    println!("Found bad link! {}", url);
+                }
+                return false;
+            }
+
+            response = response_result.unwrap();
+
+            if response.headers().contains_key("Content-Type") {
+                let content_type = response.headers().get("Content-Type").unwrap().to_str();
+                if content_type.is_ok() {
+                    page.content_type = content_type.unwrap().to_string();
+                    if page.content_type != "text/html" {
+                        // Don't attempt to discover more links if it is not an HTML page
+                        println!("Page {} is not text/html, skipping link discovery!", url);
+                        page.good = true;
+                        return true
+                    }
+                }
+            }
+        }
+
+        // Get the Contents of the page
+        let contents = response.text().await;
+        
+        // Acquire a lock on the graph so that we can update it with our findings for this page
         let mut graph = graph_mutex.lock().unwrap();
-
         let page = graph.node_weight_mut(node_index).unwrap();
-        if !is_good {
+        if contents.is_err() {
             page.good = false;
             if !options.quiet {
-                println!("Found bad link! {}", url);
+                println!("Failed to get contents of link! {}", url);
             }
             return false;
         }
+        let contents = contents.unwrap();
+        let html = Html::parse_document(contents.as_str());
+
         page.good = true;
 
         if options.verbose {
@@ -104,30 +125,40 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
 
             let next_url_str = href_attribute.unwrap();
 
-            println!("Found link: {}", next_url_str);
-
             if next_url_str.len() == 0 {
                 // TODO: Add bad edge to graph for empty href attribute
+                println!("Found empty href attribute!");
                 continue;
             }
 
-            let next_url = Url::parse(next_url_str);
+            let parsed_url = Url::parse(next_url_str);
 
-            if next_url.is_err() {
-                let err = next_url.err().unwrap();
+            let mut next_url: Url;
+            if parsed_url.is_err() {
+                let err = parsed_url.err().unwrap();
                 match err {
-                    
-                    _ => return false
+                    ParseError::RelativeUrlWithoutBase => {
+                        let parsed_url = url.join(next_url_str);
+                        if parsed_url.is_err() {
+                            // TODO: Add bad edge to graph for failed parse
+                            println!("Failed to parse URL! {}", next_url_str);
+                            continue
+                        }
+                        next_url = parsed_url.unwrap();
+                    }
+                    _ => {
+                        // TODO: Add bad edge to graph for failed parse
+                        println!("Failed to parse URL! {}", next_url_str);
+                        continue
+                    }
                 }
             }
-
-            if next_url.is_err() {
-                // TODO: Add bad edge to graph for failed parse
-                println!("Failed to parse URL! {}", next_url_str);
-                continue;
+            else {
+                next_url = parsed_url.unwrap();
             }
 
-            let next_url = next_url.unwrap();
+            // Remove anything with a # in it to deduplicate URLs pointing to same page but different sections
+            next_url.set_fragment(None);
 
             let existing_page = page_map.get(&next_url);
             if existing_page.is_some() {
@@ -144,7 +175,7 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
                     Page {
                     url: next_url.clone(),
                     title: "".to_string(),
-                    filetype: "".to_string(),
+                    content_type: "".to_string(),
                     good: false,
                     checked: false
                 }
@@ -197,7 +228,7 @@ async fn visit_root_page<'a>(url: &Url, options: &SpiderOptions<'a>, graph: &Mut
     { 
         root_index = graph.lock().unwrap().add_node(Page {
             title: String::new(),
-            filetype: String::new(),
+            content_type: String::new(),
             good: false,
             checked: false,
             url: url.clone()
