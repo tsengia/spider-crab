@@ -8,7 +8,9 @@ edition = "2021"
 [dependencies]
 async-recursion = "1.0.5"
 clap = "4.4.7"
+futures = "0.3.29"
 petgraph = "0.6.4"
 reqwest = "0.11.22"
 scraper = "0.18.1"
 tokio = { version = "1.34.0", features = ["macros"] }
+url = "2.4.1"

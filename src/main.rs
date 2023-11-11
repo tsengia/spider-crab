@@ -1,6 +1,7 @@
 use clap::{Arg, ArgAction, Command};
 use scraper::{Html, Selector};
-use reqwest::{Client, Url};
+use reqwest::Client;
+use url::{Url, ParseError};
 use petgraph::graph::{DiGraph, NodeIndex};
 use std::{collections::HashMap, sync::Mutex};
 use async_recursion::async_recursion;
@@ -84,6 +85,12 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
         }
         
         let links = html.select(options.link_selector);
+        let titles = html.select(options.title_selector);
+
+        let title = titles.last();
+        if !title.is_some() {
+            println!("Page does not have a title! {}", url);
+        }
 
         let mut page_map = page_map_mutex.lock().unwrap();
 
@@ -105,6 +112,14 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
             }
 
             let next_url = Url::parse(next_url_str);
+
+            if next_url.is_err() {
+                let err = next_url.err().unwrap();
+                match err {
+                    
+                    _ => return false
+                }
+            }
 
             if next_url.is_err() {
                 // TODO: Add bad edge to graph for failed parse
@@ -143,12 +158,17 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
             );
 
             // Add an entry to the page HashMap to mark that we're going to visit the page
-            page_map.insert(next_url, new_node);
+            page_map.insert(next_url.clone(), new_node);
 
             if current_depth == options.max_depth {
                 // If we have reached max depth, then do not add the new node to the
                 // new_nodes list. This prevents us from visiting those nodes after
                 // this loop finishes
+                continue;
+            }
+
+            if next_url.domain().unwrap() != options.domain_name {
+                println!("Skipping URL because out of starting domain! {}", next_url);
                 continue;
             }
 
