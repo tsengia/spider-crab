@@ -1,22 +1,18 @@
 use clap::{Arg, ArgAction, Command};
 use scraper::{Html, Selector};
-use reqwest::Client;
+use reqwest::{Client, Url};
 use petgraph::graph::{DiGraph, NodeIndex};
-use std::{collections::HashMap, sync::Arc, sync::Mutex};
-
-#[derive(Debug)]
-struct SpiderError {
-    url: String,
-    referenced_by: String,
-    error_code: reqwest::Error
-}
+use std::{collections::HashMap, sync::Mutex};
+use async_recursion::async_recursion;
 
 struct SpiderOptions<'a> {
     max_depth: i32,
     domain_name: &'a str,
     link_selector: &'a Selector,
     title_selector: &'a Selector,
-    client: &'a Client
+    client: &'a Client,
+    quiet: bool,
+    verbose: bool
 }
 
 struct Link {
@@ -28,17 +24,16 @@ struct Page {
     filetype: String,
     good: bool,
     checked: bool,
-    url: String
+    url: Url
 }
 
-type PageMap = HashMap<String, NodeIndex>;
-type PageGraph = DiGraph<Arc<Mutex<Page>>, Arc<Mutex<Link>>>;
+type PageMap = HashMap<Url, NodeIndex>;
+type PageGraph = DiGraph<Page, Link>;
 
-async fn get_document(url: &str, client: &Client) 
+async fn get_document(url: &Url, client: &Client) 
     -> Result<Html, Box<dyn std::error::Error>> {
     // Send an HTTP(S) GET request for the desired URL
-    let response = client.get(url).send().await?;
-    
+    let response = client.request(reqwest::Method::GET, url.clone()).send().await?;
     // Get the Contents of the page
     let contents = response.text().await?;
 
@@ -50,101 +45,149 @@ async fn get_document(url: &str, client: &Client)
     Ok(document)
 }
 
-async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, graph: &mut PageGraph, page_map: &mut PageMap, current_depth: i32) 
-    -> Result<(),Box<dyn std::error::Error>> {
-    
-    let page_arc = graph.node_weight_mut(node_index).unwrap();
-    let html: Box<Html>;
-    {
-        let page = &mut page_arc.lock().unwrap();
-
-        let document = get_document(page.url.as_str(), options.client).await;
-
-        page.checked = true;
-        if document.is_err() {
-            page.good = false;
-            //return Err(false)
-        }
-
-        html = Box::<Html>::new(document.unwrap());
-    }
-
-    
-    let links = html.select(options.link_selector);
-
-
+#[async_recursion]
+async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, graph_mutex: &Mutex<&mut PageGraph>, page_map_mutex: &Mutex<&mut PageMap>, current_depth: i32) -> bool {
+    let url: Url;
     let mut new_nodes = Vec::<NodeIndex>::new();
+        
     // Reserve some space for our new node indices. 
     // Sadly, we can't use links.count() here because it consumes the iterator, which leaves us
     // with no iterator to iterate over the selected elements with
     new_nodes.reserve(32);
 
-    for l in links {
-        let href_attribute = l.attr("href");
+    {
+        // Momentarily acquire the lock so that we can grab the URL of the page
+        url = graph_mutex.lock().unwrap().node_weight(node_index).unwrap().url.clone();
+    }   // End of scope, releases the lock
 
-        if href_attribute.is_none() {
-            // TODO: Add bad edge to graph for missing href attribute
-            continue;
+    {
+        // Start of new scope, this is to get the document, parse links, and update the graph
+        let document = get_document(&url, options.client).await;
+        let is_good = !document.is_err();
+        let html = document.unwrap();
+
+        // Acquire a lock on the graph so that we can update it with the discovered nodes
+        let mut graph = graph_mutex.lock().unwrap();
+
+        let page = graph.node_weight_mut(node_index).unwrap();
+        if !is_good {
+            page.good = false;
+            if !options.quiet {
+                println!("Found bad link! {}", url);
+            }
+            return false;
         }
+        page.good = true;
 
-        let next_url = href_attribute.unwrap();
-
-        if next_url.len() == 0 {
-            // TODO: Add bad edge to graph for empty href attribute
-            continue;
-        }
-
-        let existing_page = page_map.get(next_url);
-        if existing_page.is_some() {
-            // Target page has already been visited
-            graph.add_edge(node_index, 
-                *existing_page.unwrap(), 
-                Arc::new(Mutex::new(
-                    Link { visited: true }
-                )));
-            continue;
+        if options.verbose {
+            println!("Visited page {}", url.as_str());
         }
         
-        // Target page has not been visited yet
-        let new_node = graph.add_node(
-            Arc::new(Mutex::new(
-                Page {
-                url: next_url.to_string(),
-                title: "".to_string(),
-                filetype: "".to_string(),
-                good: false,
-                checked: false
+        let links = html.select(options.link_selector);
+
+        let mut page_map = page_map_mutex.lock().unwrap();
+
+        for l in links {
+            let href_attribute = l.attr("href");
+
+            if href_attribute.is_none() {
+                // TODO: Add bad edge to graph for missing href attribute
+                continue;
             }
-        )));
 
-        if current_depth == options.max_depth {
-            // If we have reached max depth, then do not add the new node to the
-            // new_nodes list. This prevents us from visiting those nodes after
-            // this loop finishes
-            continue;
+            let next_url_str = href_attribute.unwrap();
+
+            println!("Found link: {}", next_url_str);
+
+            if next_url_str.len() == 0 {
+                // TODO: Add bad edge to graph for empty href attribute
+                continue;
+            }
+
+            let next_url = Url::parse(next_url_str);
+
+            if next_url.is_err() {
+                // TODO: Add bad edge to graph for failed parse
+                println!("Failed to parse URL! {}", next_url_str);
+                continue;
+            }
+
+            let next_url = next_url.unwrap();
+
+            let existing_page = page_map.get(&next_url);
+            if existing_page.is_some() {
+                // Target page has already been visited
+                graph.add_edge(node_index, 
+                    *existing_page.unwrap(), 
+                     Link { visited: true }
+                    );
+                continue;
+            }
+            
+            // Target page has not been visited yet, add a node to the graph
+            let new_node = graph.add_node(
+                    Page {
+                    url: next_url.clone(),
+                    title: "".to_string(),
+                    filetype: "".to_string(),
+                    good: false,
+                    checked: false
+                }
+            );
+
+            // Add an edge to the graph connecting current page to the target page
+            graph.add_edge(node_index, new_node, 
+                Link { 
+                    visited: false 
+                }
+            );
+
+            // Add an entry to the page HashMap to mark that we're going to visit the page
+            page_map.insert(next_url, new_node);
+
+            if current_depth == options.max_depth {
+                // If we have reached max depth, then do not add the new node to the
+                // new_nodes list. This prevents us from visiting those nodes after
+                // this loop finishes
+                continue;
+            }
+
+            new_nodes.push(new_node);
         }
+    }
+    
+    let mut futures_vec = Vec::new();
+    futures_vec.reserve_exact(new_nodes.len());
 
-        new_nodes.push(new_node);
+    // Create a future for each node we discovered
+    for node in new_nodes {
+        futures_vec.push(visit_page(node, options, graph_mutex, page_map_mutex, current_depth + 1));
     }
 
-    Ok(())
+    // Wait for all the tasks to complete
+    futures::future::join_all(futures_vec).await;
+
+    true
 }
 
-async fn visit_root_page<'a>(url: &str, options: &SpiderOptions<'a>, graph: &mut PageGraph, page_map: &mut PageMap)
-    -> Result<(), Box<dyn std::error::Error>> {
+async fn visit_root_page<'a>(url: &Url, options: &SpiderOptions<'a>, graph: &Mutex<&mut PageGraph>, page_map: &Mutex<&mut PageMap>)
+    -> bool {
 
-    let root_index = graph.add_node(Arc::new(Mutex::new(Page {
-        title: String::new(),
-        filetype: String::new(),
-        good: false,
-        checked: false,
-        url: String::from(url)
-    })));
+    let root_index: NodeIndex;
+    { 
+        root_index = graph.lock().unwrap().add_node(Page {
+            title: String::new(),
+            filetype: String::new(),
+            good: false,
+            checked: false,
+            url: url.clone()
+        });
+    }
 
     return visit_page(root_index, options, graph, page_map, 0).await;
 }
 
-#[tokio::main]
+#[tokio::main(flavor="current_thread")]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let matches = Command::new("Spider Crab")
         .version("0.0.1")
@@ -159,14 +202,32 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             .long("depth")
             .action(ArgAction::Set)
             .default_value("-1")
+            .value_parser(clap::value_parser!(i32))
             .help("Depth of links to check. Default is -1 which is unlimited."))
+        .arg(Arg::new("quiet")
+            .short('q')
+            .long("quiet")
+            .action(ArgAction::SetTrue)
+            .help("Do not print to STDOUT or STDERR."))
+        .arg(Arg::new("verbose")
+            .short('v')
+            .long("verbose")
+            .action(ArgAction::SetTrue)
+            .help("Print more log messages."))
         .get_matches();
 
-    println!("Spider Crab");
+    let url_str = matches.get_one::<String>("url").expect("No URL supplied!").as_str();
 
-    let url = matches.get_one::<String>("url").expect("No URL supplied!").as_str();
+    let url = Url::parse(url_str).unwrap();
     
     let depth: i32 = *matches.get_one::<i32>("depth").expect("Invalid depth!");
+
+    let quiet: bool = matches.get_flag("quiet");
+    let verbose: bool = matches.get_flag("verbose");
+
+    if !quiet {
+        println!("Spider Crab");
+    }
 
     let client: Client = Client::new();
     let link_selector = Selector::parse("a").expect("Invalid link selector!");
@@ -177,22 +238,39 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         max_depth: depth,
         link_selector: &link_selector,
         title_selector: &title_selector,
-        domain_name: url
+        domain_name: url.domain().unwrap(),
+        quiet,
+        verbose
     };
 
-    let mut map = HashMap::<String, NodeIndex>::new();
-    let mut graph = DiGraph::<Arc<Mutex<Page>>, Arc<Mutex<Link>>>::new();
+    let mut map = PageMap::new();
+    let mut graph = PageGraph::new();
 
+    const EXPECTED_PAGES: usize = 50;
     graph.reserve_edges(200);
-    graph.reserve_nodes(50);
+    graph.reserve_nodes(EXPECTED_PAGES);
+    map.reserve(EXPECTED_PAGES);
 
-    let result = visit_root_page(url, &options, &mut graph, &mut map).await;
+    let graph_mutex = Mutex::new(&mut graph);
+    let map_mutex = Mutex::new(&mut map);
+    let result = visit_root_page(&url, &options, &graph_mutex, &map_mutex).await;
 
-    if result.is_ok() {
-        println!("All links good!");
+    if !quiet {
+        println!("Discovered {} pages", graph.node_count());
+        println!("Discovered {} links", graph.edge_count());
+    }
+
+    if result  {
+        if !quiet {
+            println!("All links good!");
+        }
+        // Ok(())
     }
     else {
-        println!("Something failed!");
+        if !quiet {
+            println!("Something failed!");
+        }
+        // TODO: Return an error code
     }
 
     // TODO: Check value of result and report back error code
