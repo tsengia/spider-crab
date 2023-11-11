@@ -83,6 +83,11 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
             }
         }
 
+        if url.domain().unwrap() != options.domain_name {
+            println!("Not parsing HTML due to being outside of domain! {}", url);
+            return true;
+        }
+
         // Get the Contents of the page
         let contents = response.text().await;
         
@@ -189,11 +194,6 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
                 // If we have reached max depth, then do not add the new node to the
                 // new_nodes list. This prevents us from visiting those nodes after
                 // this loop finishes
-                continue;
-            }
-
-            if next_url.domain().unwrap() != options.domain_name {
-                println!("Skipping URL because out of starting domain! {}", next_url);
                 continue;
             }
 
