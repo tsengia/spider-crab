@@ -106,12 +106,6 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
         }
         
         let links = html.select(options.link_selector);
-        let titles = html.select(options.title_selector);
-
-        let title = titles.last();
-        if !title.is_some() {
-            println!("Page does not have a title! {}", url);
-        }
 
         let mut page_map = page_map_mutex.lock().unwrap();
 
@@ -233,6 +227,8 @@ async fn visit_root_page<'a>(url: &Url, options: &SpiderOptions<'a>, graph: &Mut
             checked: false,
             url: url.clone()
         });
+
+        page_map.lock().unwrap().insert(url.clone(), root_index);
     }
 
     return visit_page(root_index, options, graph, page_map, 0).await;
