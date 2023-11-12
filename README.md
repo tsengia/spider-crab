@@ -1,5 +1,5 @@
 # Spider Crab
-Command link web crawler for checking links.
+Web crawler for checking links.
 
 The purpose of spider crab is to provide a small, portable, and fast static website checker that can be used in CI pipelines to monitor for broken links.
 
