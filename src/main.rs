@@ -47,6 +47,36 @@ struct Page {
 type PageMap = HashMap<Url, NodeIndex>;
 type PageGraph = DiGraph<Page, Link>;
 
+fn parse_url(current_url: &Url, url_str: &str) -> Option<Url> {
+    // Try to parse an absolute URL from the string
+    let mut parsed_url = Url::parse(url_str);
+
+    if parsed_url.is_err() {
+        // URL parse failed, is it a relative
+        let err = parsed_url.err().unwrap();
+        match err {
+            ParseError::RelativeUrlWithoutBase => {
+                // Error code tells us it is a relative URL,
+                //  supply the base URL to parse the relative URL against
+                parsed_url = current_url.join(url_str);
+                if parsed_url.is_err() {
+                    // Relative URL parse failed
+                    return None
+                }
+            }
+            // URL parse failed entirely, not a valid URL
+            _ => return None
+        }
+    }
+    
+    // Remove anything with a # in the parsed URL to deduplicate 
+    //  URLs pointing to same page but different sections
+    let mut parsed_url = parsed_url.unwrap();
+    parsed_url.set_fragment(None);
+
+    return Some(parsed_url);
+}
+
 #[async_recursion]
 async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, graph_mutex: &Mutex<&mut PageGraph>, page_map_mutex: &Mutex<&mut PageMap>, current_depth: i32) -> bool {
     let url: Url;
@@ -164,36 +194,14 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
                 continue;
             }
 
-            let parsed_url = Url::parse(next_url_str);
-
-            let mut next_url: Url;
-            if parsed_url.is_err() {
-                let err = parsed_url.err().unwrap();
-                match err {
-                    ParseError::RelativeUrlWithoutBase => {
-                        let parsed_url = url.join(next_url_str);
-                        if parsed_url.is_err() {
-                            // TODO: Add bad edge to graph for failed parse
-                            println!("Failed to parse URL! {}", l.html());
-                            found_problem = true;
-                            continue
-                        }
-                        next_url = parsed_url.unwrap();
-                    }
-                    _ => {
-                        // TODO: Add bad edge to graph for failed parse
-                        println!("Failed to parse URL! {}", l.html());
-                        found_problem = true;
-                        continue
-                    }
-                }
-            }
-            else {
-                next_url = parsed_url.unwrap();
+            let next_url = parse_url(&url, next_url_str);
+            if next_url.is_none() {
+                println!("Failed to parse URL: {}", next_url_str);
+                found_problem = true;
+                continue;
             }
 
-            // Remove anything with a # in it to deduplicate URLs pointing to same page but different sections
-            next_url.set_fragment(None);
+            let next_url = next_url.unwrap();
 
             let existing_page = page_map.get(&next_url);
             if existing_page.is_some() {
