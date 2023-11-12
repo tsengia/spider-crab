@@ -73,12 +73,22 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
             if response.headers().contains_key("Content-Type") {
                 let content_type = response.headers().get("Content-Type").unwrap().to_str();
                 if content_type.is_ok() {
-                    page.content_type = content_type.unwrap().to_string();
-                    if page.content_type != "text/html" {
-                        // Don't attempt to discover more links if it is not an HTML page
-                        println!("Page {} is not text/html, skipping link discovery!", url);
-                        page.good = true;
-                        return true
+                    page.content_type = content_type.unwrap().to_string().to_lowercase();
+                    let mut content_type = page.content_type.as_str();
+                    let split_index = content_type.find(";");
+
+                    if split_index.is_some() {
+                        content_type = &content_type[0..split_index.unwrap()];
+                    }
+
+                    match content_type {
+                        "text/html" | "html" => {},
+                        _ => {
+                            // Don't attempt to discover more links if it is not an HTML page
+                            println!("Page {} ContentType is {}, skipping link discovery!", url, page.content_type);
+                            page.good = true;
+                            return true
+                        }
                     }
                 }
             }
