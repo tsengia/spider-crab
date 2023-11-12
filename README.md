@@ -1,7 +1,15 @@
 # Spider Crab
-Command link web crawler for checking links and images.
+Command link web crawler for checking links.
 
-## Usage
+The purpose of spider crab is to provide a small, portable, and fast static website checker that can be used in CI pipelines to monitor for broken links.
+
+If Spider Crab finds the following, then it will return a non-zero exit code:
+- Broken link
+- `<a>` element without an `href` attribute
+- `<a>` element with an `href` attribute that is blank (`href=""`)
+
+If Spider Crab does not find any issues, then it will return a `0` exit code.
+
 ```
 Usage: spider-crab [OPTIONS] <url>
 
