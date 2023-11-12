@@ -1,5 +1,5 @@
 use clap::{Arg, ArgAction, Command};
-use scraper::{Html, Selector};
+use scraper::{Html, Selector, Element, selector::CssLocalName};
 use reqwest::{Client, Response};
 use url::{Url, ParseError};
 use petgraph::graph::{DiGraph, NodeIndex};
@@ -13,11 +13,12 @@ struct SpiderOptions<'a> {
     title_selector: &'a Selector,
     client: &'a Client,
     quiet: bool,
-    verbose: bool
+    verbose: bool,
+    skip_class: CssLocalName
 }
 
 struct Link {
-    visited: bool
+    html: String
 }
 
 struct Page {
@@ -35,7 +36,7 @@ type PageGraph = DiGraph<Page, Link>;
 async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, graph_mutex: &Mutex<&mut PageGraph>, page_map_mutex: &Mutex<&mut PageMap>, current_depth: i32) -> bool {
     let url: Url;
     let mut new_nodes = Vec::<NodeIndex>::new();
-        
+    let mut found_problem: bool = false;
     // Reserve some space for our new node indices. 
     // Sadly, we can't use links.count() here because it consumes the iterator, which leaves us
     // with no iterator to iterate over the selected elements with
@@ -97,7 +98,7 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
         if contents.is_err() {
             page.good = false;
             if !options.quiet {
-                println!("Failed to get contents of link! {}", url);
+                println!("Failed to get contents of page! {}", url);
             }
             return false;
         }
@@ -117,8 +118,15 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
         for l in links {
             let href_attribute = l.attr("href");
 
+            if l.has_class(&options.skip_class, scraper::CaseSensitivity::CaseSensitive) {
+                // Link is marked with the spider-crab-skip class, so skip it
+                continue
+            }
+
             if href_attribute.is_none() {
-                // TODO: Add bad edge to graph for missing href attribute
+                // TODO: Add bad edge to graph for missing href attribute?
+                println!("Link missing href attribute! {}", l.html());
+                found_problem = true;
                 continue;
             }
 
@@ -126,7 +134,8 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
 
             if next_url_str.len() == 0 {
                 // TODO: Add bad edge to graph for empty href attribute
-                println!("Found empty href attribute!");
+                println!("Found empty href attribute! Link: {}", l.html());
+                found_problem = true;
                 continue;
             }
 
@@ -140,14 +149,16 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
                         let parsed_url = url.join(next_url_str);
                         if parsed_url.is_err() {
                             // TODO: Add bad edge to graph for failed parse
-                            println!("Failed to parse URL! {}", next_url_str);
+                            println!("Failed to parse URL! {}", l.html());
+                            found_problem = true;
                             continue
                         }
                         next_url = parsed_url.unwrap();
                     }
                     _ => {
                         // TODO: Add bad edge to graph for failed parse
-                        println!("Failed to parse URL! {}", next_url_str);
+                        println!("Failed to parse URL! {}", l.html());
+                        found_problem = true;
                         continue
                     }
                 }
@@ -164,7 +175,7 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
                 // Target page has already been visited
                 graph.add_edge(node_index, 
                     *existing_page.unwrap(), 
-                     Link { visited: true }
+                     Link { html: l.html() }
                     );
                 continue;
             }
@@ -183,7 +194,7 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
             // Add an edge to the graph connecting current page to the target page
             graph.add_edge(node_index, new_node, 
                 Link { 
-                    visited: false 
+                    html: l.html()
                 }
             );
 
@@ -210,9 +221,10 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
     }
 
     // Wait for all the tasks to complete
-    futures::future::join_all(futures_vec).await;
+    let result = futures::future::join_all(futures_vec).await;
 
-    true
+    // Return true if page is OK and all referenced pages also return true
+    !found_problem && !result.contains(&false)
 }
 
 async fn visit_root_page<'a>(url: &Url, options: &SpiderOptions<'a>, graph: &Mutex<&mut PageGraph>, page_map: &Mutex<&mut PageMap>)
@@ -279,15 +291,17 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let client: Client = Client::new();
     let link_selector = Selector::parse("a").expect("Invalid link selector!");
     let title_selector = Selector::parse("title").expect("Invalid title selector!");
+    let skip_class = CssLocalName::from("scrab-skip");
 
-    let options = SpiderOptions {
+    let mut options = SpiderOptions {
         client: &client,
         max_depth: depth,
         link_selector: &link_selector,
         title_selector: &title_selector,
         domain_name: url.domain().unwrap(),
         quiet,
-        verbose
+        verbose,
+        skip_class
     };
 
     let mut map = PageMap::new();
