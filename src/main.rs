@@ -6,6 +6,20 @@ use petgraph::graph::{DiGraph, NodeIndex};
 use std::{collections::HashMap, sync::Mutex};
 use async_recursion::async_recursion;
 
+#[derive(Debug)]
+struct SpiderError {
+    message: String
+}
+
+impl std::error::Error for SpiderError { }
+
+impl std::fmt::Display for SpiderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SpiderError: {}", self.message)
+    }
+}
+
+
 struct SpiderOptions<'a> {
     max_depth: i32,
     domain_name: &'a str,
@@ -16,6 +30,7 @@ struct SpiderOptions<'a> {
     verbose: bool,
     skip_class: CssLocalName
 }
+
 
 struct Link {
     html: String
@@ -335,15 +350,13 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         if !quiet {
             println!("All links good!");
         }
-        // Ok(())
+        return Ok(());
     }
     else {
         if !quiet {
             println!("Something failed!");
         }
-        // TODO: Return an error code
+        let e = Box::new(SpiderError { message: String::from("Check failed!") }) as Box<dyn std::error::Error>;
+        return Err(e);
     }
-
-    // TODO: Check value of result and report back error code
-    Ok(())
 }
