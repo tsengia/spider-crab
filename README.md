@@ -1,5 +1,6 @@
 # Spider Crab
-[![Rust](https://github.com/tsengia/spider-crab/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/tsengia/spider-crab/actions/workflows/rust.yml)
+[![Rust](https://github.com/tsengia/spider-crab/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/tsengia/spider-crab/actions/workflows/rust.yml)  
+
 Web crawler for checking links.
 
 The purpose of spider crab is to provide a small, portable, and fast static website checker that can be used in CI pipelines to monitor for broken links.
