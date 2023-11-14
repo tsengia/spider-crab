@@ -47,7 +47,7 @@ struct Page {
 type PageMap = HashMap<Url, NodeIndex>;
 type PageGraph = DiGraph<Page, Link>;
 
-fn parse_url(current_url: &Url, url_str: &str) -> Option<Url> {
+fn parse_relative_or_absolute_url(current_url: &Url, url_str: &str) -> Option<Url> {
     // Try to parse an absolute URL from the string
     let mut parsed_url = Url::parse(url_str);
 
@@ -110,6 +110,7 @@ fn check_domain(domain_name: &str, url: &Url) -> bool {
     }
     let url_domain = url_domain.unwrap();
 
+    // Return true if the two domains match
     domain_name == url_domain
 }
 
@@ -119,9 +120,7 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
     let mut new_nodes = Vec::<NodeIndex>::new();
     let mut found_problem: bool = false;
     // Reserve some space for our new node indices. 
-    // Sadly, we can't use links.count() here because it consumes the iterator, which leaves us
-    // with no iterator to iterate over the selected elements with
-    new_nodes.reserve(32);
+    new_nodes.reserve(64);
 
     {
         // Momentarily acquire the lock so that we can grab the URL of the page
@@ -224,7 +223,7 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
                 continue;
             }
 
-            let next_url = parse_url(&url, next_url_str);
+            let next_url = parse_relative_or_absolute_url(&url, next_url_str);
             if next_url.is_none() {
                 println!("Failed to parse URL: {}", next_url_str);
                 found_problem = true;
@@ -295,6 +294,7 @@ async fn visit_root_page<'a>(url: &Url, options: &SpiderOptions<'a>, graph: &Mut
 
     let root_index: NodeIndex;
     { 
+        // Insert the root page as a node into the graph
         root_index = graph.lock().unwrap().add_node(Page {
             title: None,
             content_type: None,
@@ -303,6 +303,8 @@ async fn visit_root_page<'a>(url: &Url, options: &SpiderOptions<'a>, graph: &Mut
             url: url.clone()
         });
 
+        // Mark the root node as visited because visit_page assumes 
+        //  that the target page is already marked as visited
         page_map.lock().unwrap().insert(url.clone(), root_index);
     }
 
