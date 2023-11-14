@@ -7,6 +7,7 @@ use std::{collections::HashMap, sync::Mutex};
 use async_recursion::async_recursion;
 
 #[derive(Debug)]
+/// Custom error type for Spider Crab
 struct SpiderError {
     message: String
 }
@@ -19,15 +20,26 @@ impl std::fmt::Display for SpiderError {
     }
 }
 
-
+/// Options to pass to the traversal algorithm
 struct SpiderOptions<'a> {
+    /// Maximum depth to traverse from root node.
+    /// If set to `-1`, traverses infinitely
+    /// If set to `0`, then only visits the root node.
+    /// Any positive value visits noes that are a distance `max_depth` away from the root node
     max_depth: i32,
+    /// Domain name of the root node
     domain_name: &'a str,
+    /// Scraper CSS Selector for link elements
     link_selector: &'a Selector,
+    /// Scraper CSS Selector for title elements
     title_selector: &'a Selector,
+    /// reqwest HTTP async client for making requests
     client: &'a Client,
+    /// Flag to enable quiet mode. True if quiet mode enabled.
     quiet: bool,
+    /// Flag to enable verbose mode. True if verbose mode enabled.
     verbose: bool,
+    /// Name of the CSS class that marks elements to not check URLs for
     skip_class: CssLocalName
 }
 
@@ -36,17 +48,29 @@ struct Link {
     html: String
 }
 
+/// Representation of a document/page
 struct Page {
+    /// Title of the page
     title: Option<String>,
+    /// Content-Type that was given when this page was visited
     content_type: Option<String>,
+    /// True if the page was visited and a 2XX HTTP status code was returned, false otherwise
     good: bool,
+    /// True if this page was visited, false otherwise
     checked: bool,
+    /// URL that this page is represented by. Does not include URL parameters or fragments 
     url: Url
 }
 
+/// Helper type for the HashMap that maps Urls to Nodes in the graph
 type PageMap = HashMap<Url, NodeIndex>;
+
+/// Helper type that tracks all visited pages and the links between them
 type PageGraph = DiGraph<Page, Link>;
 
+/// Parses a string into a URL. String can be an absolute URL, or a relative URL.
+/// If `url_str` is a relative URL, then it will be parsed relative to `current_url`
+/// Returns `None` if no valid URL could be parsed
 fn parse_relative_or_absolute_url(current_url: &Url, url_str: &str) -> Option<Url> {
     // Try to parse an absolute URL from the string
     let mut parsed_url = Url::parse(url_str);
@@ -77,6 +101,11 @@ fn parse_relative_or_absolute_url(current_url: &Url, url_str: &str) -> Option<Ur
     return Some(parsed_url);
 }
 
+
+/// Attempts to retrieve the HTTP ContentType from a Response and check if it is some form of HTML document.
+/// Returns `(true, Some(content_type: String))` if the ContentType is some form of HTML document.
+/// Returns `(false, Some(content_type: String))` if the ContentType is not HTML.
+/// Returns `(false, None)` if failed to get the ContentType
 fn check_content_type(response: &Response) -> (bool, Option<String>) {
     if response.headers().contains_key("Content-Type") {
         let content_type = response.headers().get("Content-Type").unwrap().to_str();
@@ -102,6 +131,9 @@ fn check_content_type(response: &Response) -> (bool, Option<String>) {
     (false, None)
 }
 
+/// Attempts to grab the domain name from `url` and compare it against `domain_name`.
+/// Returns `true` if domain names match.
+/// Returns `false` if domain names are different, or if failed to obtain domain name for `url`
 fn check_domain(domain_name: &str, url: &Url) -> bool {
     let url_domain = url.domain();
     if url_domain.is_none() {
@@ -114,6 +146,9 @@ fn check_domain(domain_name: &str, url: &Url) -> bool {
     domain_name == url_domain
 }
 
+/// Attempt to extract and parse a URL from a `<a>` HTML element
+/// Returns `Some(Url)` if extract + parse was successful
+/// Returns `None` if extraction or parsing failed
 fn get_url_from_element(element: ElementRef, current_url: &Url) -> Option<Url> {
     let href_attribute = element.attr("href");
 
@@ -138,6 +173,17 @@ fn get_url_from_element(element: ElementRef, current_url: &Url) -> Option<Url> {
     next_url
 }
 
+/// Recursive function that visits the URL of the node given by `node_index` in the graph locked by the `graph_mutex`.
+/// Keeps track of pages that were already visited by inserting URLs into the HashMap locked behind the `page_map_mutex`.
+/// Behavior can be controlled via the `options` parameter.
+/// Current distance from the root node is given by the `current_depth` parameter.
+/// Will recursive call itself until one of the following occurs:
+/// * `current_depth` reaches `options.max_depth`
+/// * Domain name of the newly discovered URL does not match the `options.domain_name`
+/// * ContentType of the visited URL is not `HTML`
+/// * Failed to get the ContentType of the visited URL
+/// * HTTP GET request to the URL results in a non-2XX HTTP status code
+/// * Newly discovered URL has already been visited
 #[async_recursion]
 async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, graph_mutex: &Mutex<&mut PageGraph>, page_map_mutex: &Mutex<&mut PageMap>, current_depth: i32) -> bool {
     let url: Url;
