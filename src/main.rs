@@ -37,8 +37,8 @@ struct Link {
 }
 
 struct Page {
-    title: String,
-    content_type: String,
+    title: Option<String>,
+    content_type: Option<String>,
     good: bool,
     checked: bool,
     url: Url
@@ -75,6 +75,42 @@ fn parse_url(current_url: &Url, url_str: &str) -> Option<Url> {
     parsed_url.set_fragment(None);
 
     return Some(parsed_url);
+}
+
+fn check_content_type(response: &Response) -> (bool, Option<String>) {
+    if response.headers().contains_key("Content-Type") {
+        let content_type = response.headers().get("Content-Type").unwrap().to_str();
+        if content_type.is_ok() {
+            let mut content_type = content_type.unwrap().to_string().to_lowercase();
+            let split_index = content_type.find(";");
+            
+            if split_index.is_some() {
+                let (split_content_type, _) = content_type.split_at(split_index.unwrap());
+                content_type = split_content_type.to_string();
+            }
+
+            match content_type.as_str() {
+                "text/html" | "html" => { return (true, Some(content_type)) },
+                _ => { return (false, Some(content_type)) }
+            }
+        }
+    }
+
+    // Response does not contain a Content-Type header, or Failed to get the content-type header
+    //  do not attempt to check the page
+    // TODO: Warn the user about the missing Content-Type header?
+    (false, None)
+}
+
+fn check_domain(domain_name: &str, url: &Url) -> bool {
+    let url_domain = url.domain();
+    if url_domain.is_none() {
+        // URL doesn't have a domain associated with it
+        return false;
+    }
+    let url_domain = url_domain.unwrap();
+
+    domain_name == url_domain
 }
 
 #[async_recursion]
@@ -115,33 +151,27 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
 
             response = response_result.unwrap();
 
-            if response.headers().contains_key("Content-Type") {
-                let content_type = response.headers().get("Content-Type").unwrap().to_str();
-                if content_type.is_ok() {
-                    page.content_type = content_type.unwrap().to_string().to_lowercase();
-                    let mut content_type = page.content_type.as_str();
-                    let split_index = content_type.find(";");
+            // Attempt to get the Content-Type of the page
+            let (parse_html, content_type) = check_content_type(&response);
+            page.content_type = content_type.clone();
 
-                    if split_index.is_some() {
-                        content_type = &content_type[0..split_index.unwrap()];
-                    }
-
-                    match content_type {
-                        "text/html" | "html" => {},
-                        _ => {
-                            // Don't attempt to discover more links if it is not an HTML page
-                            println!("Page {} ContentType is {}, skipping link discovery!", url, page.content_type);
-                            page.good = true;
-                            return true
-                        }
-                    }
+            // If Content-Type is not HTML, then don't try to parse the HTML
+            if !parse_html {
+                if options.verbose { 
+                    println!("Not parsing HTML for: {}, Content-Type is {:?}", url, content_type);
                 }
+                return true;
             }
-        }
 
-        if url.domain().unwrap() != options.domain_name {
-            println!("Not parsing HTML due to being outside of domain! {}", url);
-            return true;
+            // Check to see if the domain is inside the starting domain.
+            let parse_html = check_domain(&options.domain_name, &url);
+
+            if !parse_html {
+                if options.verbose { 
+                    println!("Not parsing HTML for: {}, outside of domain", url);
+                }
+                return true;
+            }
         }
 
         // Get the Contents of the page
@@ -217,8 +247,8 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
             let new_node = graph.add_node(
                     Page {
                     url: next_url.clone(),
-                    title: "".to_string(),
-                    content_type: "".to_string(),
+                    title: None,
+                    content_type: None,
                     good: false,
                     checked: false
                 }
@@ -266,8 +296,8 @@ async fn visit_root_page<'a>(url: &Url, options: &SpiderOptions<'a>, graph: &Mut
     let root_index: NodeIndex;
     { 
         root_index = graph.lock().unwrap().add_node(Page {
-            title: String::new(),
-            content_type: String::new(),
+            title: None,
+            content_type: None,
             good: false,
             checked: false,
             url: url.clone()
@@ -326,7 +356,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let title_selector = Selector::parse("title").expect("Invalid title selector!");
     let skip_class = CssLocalName::from("scrab-skip");
 
-    let mut options = SpiderOptions {
+    let options = SpiderOptions {
         client: &client,
         max_depth: depth,
         link_selector: &link_selector,
