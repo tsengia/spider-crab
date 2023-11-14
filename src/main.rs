@@ -1,5 +1,5 @@
 use clap::{Arg, ArgAction, Command};
-use scraper::{Html, Selector, Element, selector::CssLocalName};
+use scraper::{Html, Selector, Element, selector::CssLocalName, ElementRef};
 use reqwest::{Client, Response};
 use url::{Url, ParseError};
 use petgraph::graph::{DiGraph, NodeIndex};
@@ -114,6 +114,30 @@ fn check_domain(domain_name: &str, url: &Url) -> bool {
     domain_name == url_domain
 }
 
+fn get_url_from_element(element: ElementRef, current_url: &Url) -> Option<Url> {
+    let href_attribute = element.attr("href");
+
+    if href_attribute.is_none() {
+        // Element is missing href attribute
+        return None
+    }
+
+    let next_url_str = href_attribute.unwrap();
+
+    if next_url_str.len() == 0 {
+        // href attribute value is ""
+        return None
+    }
+
+    let next_url = parse_relative_or_absolute_url(current_url, next_url_str);
+    if next_url.is_none() {
+        // Failed to parse URL in the href
+        return None
+    }
+
+    next_url
+}
+
 #[async_recursion]
 async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, graph_mutex: &Mutex<&mut PageGraph>, page_map_mutex: &Mutex<&mut PageMap>, current_depth: i32) -> bool {
     let url: Url;
@@ -200,41 +224,25 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
         let mut page_map = page_map_mutex.lock().unwrap();
 
         for l in links {
-            let href_attribute = l.attr("href");
 
             if l.has_class(&options.skip_class, scraper::CaseSensitivity::CaseSensitive) {
                 // Link is marked with the spider-crab-skip class, so skip it
                 continue
             }
 
-            if href_attribute.is_none() {
-                // TODO: Add bad edge to graph for missing href attribute?
-                println!("Link missing href attribute! {}", l.html());
-                found_problem = true;
-                continue;
-            }
-
-            let next_url_str = href_attribute.unwrap();
-
-            if next_url_str.len() == 0 {
-                // TODO: Add bad edge to graph for empty href attribute
-                println!("Found empty href attribute! Link: {}", l.html());
-                found_problem = true;
-                continue;
-            }
-
-            let next_url = parse_relative_or_absolute_url(&url, next_url_str);
+            // Parse out a URL from the link
+            let next_url = get_url_from_element(l, &url);
             if next_url.is_none() {
-                println!("Failed to parse URL: {}", next_url_str);
+                println!("Failed to get URL from element: {}", l.html());
                 found_problem = true;
                 continue;
             }
-
             let next_url = next_url.unwrap();
 
+            // Check to see if the target URL has already been visited
             let existing_page = page_map.get(&next_url);
             if existing_page.is_some() {
-                // Target page has already been visited
+                // Target URL has already been visited
                 graph.add_edge(node_index, 
                     *existing_page.unwrap(), 
                      Link { html: l.html() }
@@ -242,7 +250,7 @@ async fn visit_page<'a>(node_index: NodeIndex, options: &SpiderOptions<'a>, grap
                 continue;
             }
             
-            // Target page has not been visited yet, add a node to the graph
+            // Target URL has not been visited yet, add a node to the graph
             let new_node = graph.add_node(
                     Page {
                     url: next_url.clone(),
