@@ -59,7 +59,7 @@ impl SpiderOptions {
             max_depth: -1,
             link_selector: Box::new(Selector::parse("a").expect("Invalid title selector!")),
             title_selector: Box::new(Selector::parse("title").expect("Invalid title selector!")),
-            domain_name: url.to_string(),
+            domain_name: domain_name.to_string(),
             quiet: false,
             verbose: false,
             skip_class: CssLocalName::from("scrab-skip")
