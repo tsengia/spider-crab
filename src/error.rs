@@ -1,4 +1,5 @@
-/// Holds the custom SpiderError struct used by spider crab
+//! Holds the custom SpiderError struct used by spider crab
+
 #[derive(Debug)]
 /// Custom error type for Spider Crab
 pub struct SpiderError {

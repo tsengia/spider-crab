@@ -1,11 +1,11 @@
-/// Holds algorithm(s) used to traverse across a website
+//! Holds algorithm(s) used to traverse across a website
 
 use async_recursion::async_recursion;
 use scraper::{Html, Element};
 use reqwest::{Client, Response};
-use url::{Url};
-use petgraph::graph::{NodeIndex};
-use std::{sync::Mutex};
+use url::Url;
+use petgraph::graph::NodeIndex;
+use std::sync::Mutex;
 
 use crate::{PageGraph, PageMap, Link, Page, SpiderOptions};
 use crate::url_helpers::{get_url_from_element, check_domain};

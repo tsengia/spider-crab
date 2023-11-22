@@ -1,7 +1,7 @@
-/// Helper functions called by the page traversal algorithm
+//! Helper functions called by the page traversal algorithm
 
 use url::{Url, ParseError};
-use scraper::{ElementRef};
+use scraper::ElementRef;
 
 /// Attempt to extract and parse a URL from a `<a>` HTML element
 /// Returns `Some(Url)` if extract + parse was successful

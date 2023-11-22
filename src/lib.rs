@@ -3,7 +3,6 @@ use url::Url;
 use petgraph::graph::{DiGraph, NodeIndex};
 use std::collections::HashMap;
 
-
 pub mod error;
 pub mod algo;
 pub mod url_helpers;
