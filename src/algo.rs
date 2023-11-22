@@ -209,6 +209,8 @@ pub async fn visit_page(node_index: NodeIndex, client:&Client, options: &SpiderO
     !found_problem && !result.contains(&false)
 }
 
+/// Visits the page pointed to by the `url` and then recursively calls `visit_page()` on all links contained in that page.
+/// Entry point to the page traversal algorithm.
 pub async fn visit_root_page(url: &Url, client: &Client, options: &SpiderOptions, graph: &Mutex<&mut PageGraph>, page_map: &Mutex<&mut PageMap>)
     -> bool {
 
