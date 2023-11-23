@@ -1,14 +1,14 @@
-use scraper::{Selector, selector::CssLocalName};
-use url::Url;
 use petgraph::graph::{DiGraph, NodeIndex};
+use scraper::{selector::CssLocalName, Selector};
 use std::collections::HashMap;
+use url::Url;
 
-pub mod error;
 pub mod algo;
+pub mod error;
 pub mod url_helpers;
 
 pub struct Link {
-    pub html: String
+    pub html: String,
 }
 
 /// Representation of a document/page
@@ -21,8 +21,8 @@ pub struct Page {
     pub good: bool,
     /// True if this page was visited, false otherwise
     pub checked: bool,
-    /// URL that this page is represented by. Does not include URL parameters or fragments 
-    pub url: Url
+    /// URL that this page is represented by. Does not include URL parameters or fragments
+    pub url: Url,
 }
 
 /// Helper type for the HashMap that maps Urls to Nodes in the graph
@@ -30,7 +30,6 @@ pub type PageMap = HashMap<Url, NodeIndex>;
 
 /// Helper type that tracks all visited pages and the links between them
 pub type PageGraph = DiGraph<Page, Link>;
-
 
 /// Options to pass to the traversal algorithm
 pub struct SpiderOptions {
@@ -50,7 +49,7 @@ pub struct SpiderOptions {
     /// Flag to enable verbose mode. True if verbose mode enabled.
     pub verbose: bool,
     /// Name of the CSS class that marks elements to not check URLs for
-    pub skip_class: CssLocalName
+    pub skip_class: CssLocalName,
 }
 
 impl SpiderOptions {
@@ -62,7 +61,7 @@ impl SpiderOptions {
             domain_name: domain_name.to_string(),
             quiet: false,
             verbose: false,
-            skip_class: CssLocalName::from("scrab-skip")
+            skip_class: CssLocalName::from("scrab-skip"),
         }
     }
 }

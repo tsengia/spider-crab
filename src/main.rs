@@ -1,44 +1,55 @@
 use clap::{Arg, ArgAction, Command};
+use std::sync::Mutex;
 use url::Url;
-use std::{sync::Mutex};
 
-use spider_crab::{SpiderOptions, PageGraph, PageMap};
+use spider_crab::algo::visit_root_page;
 use spider_crab::error::SpiderError;
-use spider_crab::algo::{visit_root_page};
+use spider_crab::{PageGraph, PageMap, SpiderOptions};
 
-#[tokio::main(flavor="current_thread")]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let matches = Command::new("Spider Crab")
         .version("0.0.1")
         .about("Checks links and images in a webpage.")
         .author("Tyler Sengia")
-        .arg(Arg::new("url")
-            .action(ArgAction::Set)
-            .required(true)
-            .help("URL of the webpage to check."))
-        .arg(Arg::new("depth")
-            .short('d')
-            .long("depth")
-            .action(ArgAction::Set)
-            .default_value("-1")
-            .value_parser(clap::value_parser!(i32))
-            .help("Depth of links to check. Default is -1 which is unlimited."))
-        .arg(Arg::new("quiet")
-            .short('q')
-            .long("quiet")
-            .action(ArgAction::SetTrue)
-            .help("Do not print to STDOUT or STDERR."))
-        .arg(Arg::new("verbose")
-            .short('v')
-            .long("verbose")
-            .action(ArgAction::SetTrue)
-            .help("Print more log messages."))
+        .arg(
+            Arg::new("url")
+                .action(ArgAction::Set)
+                .required(true)
+                .help("URL of the webpage to check."),
+        )
+        .arg(
+            Arg::new("depth")
+                .short('d')
+                .long("depth")
+                .action(ArgAction::Set)
+                .default_value("-1")
+                .value_parser(clap::value_parser!(i32))
+                .help("Depth of links to check. Default is -1 which is unlimited."),
+        )
+        .arg(
+            Arg::new("quiet")
+                .short('q')
+                .long("quiet")
+                .action(ArgAction::SetTrue)
+                .help("Do not print to STDOUT or STDERR."),
+        )
+        .arg(
+            Arg::new("verbose")
+                .short('v')
+                .long("verbose")
+                .action(ArgAction::SetTrue)
+                .help("Print more log messages."),
+        )
         .get_matches();
 
-    let url_str = matches.get_one::<String>("url").expect("No URL supplied!").as_str();
+    let url_str = matches
+        .get_one::<String>("url")
+        .expect("No URL supplied!")
+        .as_str();
 
     let url = Url::parse(url_str).unwrap();
-    
+
     let depth: i32 = *matches.get_one::<i32>("depth").expect("Invalid depth!");
 
     let quiet: bool = matches.get_flag("quiet");
@@ -70,17 +81,18 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         println!("Discovered {} links", graph.edge_count());
     }
 
-    if result  {
+    if result {
         if !quiet {
             println!("All links good!");
         }
         return Ok(());
-    }
-    else {
+    } else {
         if !quiet {
             println!("Something failed!");
         }
-        let e = Box::new(SpiderError { message: String::from("Check failed!") }) as Box<dyn std::error::Error>;
+        let e = Box::new(SpiderError {
+            message: String::from("Check failed!"),
+        }) as Box<dyn std::error::Error>;
         return Err(e);
     }
 }
