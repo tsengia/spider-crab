@@ -17,12 +17,12 @@ use crate::{Link, Page, PageGraph, PageMap, SpiderOptions};
 fn check_content_type(response: &Response) -> (bool, Option<String>) {
     if response.headers().contains_key("Content-Type") {
         let content_type = response.headers().get("Content-Type").unwrap().to_str();
-        if content_type.is_ok() {
-            let mut content_type = content_type.unwrap().to_string().to_lowercase();
-            let split_index = content_type.find(';');
+        if let Ok(content_type) = content_type {
+            let mut content_type = content_type.to_string().to_lowercase();
+            let split_index: Option<usize> = content_type.find(';');
 
-            if split_index.is_some() {
-                let (split_content_type, _) = content_type.split_at(split_index.unwrap());
+            if let Some(split_index) = split_index {
+                let (split_content_type, _) = content_type.split_at(split_index);
                 content_type = split_content_type.to_string();
             }
 
