@@ -9,23 +9,17 @@ use url::{ParseError, Url};
 pub fn get_url_from_element(element: ElementRef, current_url: &Url) -> Option<Url> {
     let href_attribute = element.attr("href");
 
-    if href_attribute.is_none() {
-        // Element is missing href attribute
-        return None;
-    }
+    href_attribute?;
 
     let next_url_str = href_attribute.unwrap();
 
-    if next_url_str.len() == 0 {
+    if next_url_str.is_empty() {
         // href attribute value is ""
         return None;
     }
 
     let next_url = parse_relative_or_absolute_url(current_url, next_url_str);
-    if next_url.is_none() {
-        // Failed to parse URL in the href
-        return None;
-    }
+    next_url.as_ref()?;
 
     next_url
 }
@@ -75,5 +69,5 @@ pub fn parse_relative_or_absolute_url(current_url: &Url, url_str: &str) -> Optio
     let mut parsed_url = parsed_url.unwrap();
     parsed_url.set_fragment(None);
 
-    return Some(parsed_url);
+    Some(parsed_url)
 }

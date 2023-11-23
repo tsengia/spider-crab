@@ -19,7 +19,7 @@ fn check_content_type(response: &Response) -> (bool, Option<String>) {
         let content_type = response.headers().get("Content-Type").unwrap().to_str();
         if content_type.is_ok() {
             let mut content_type = content_type.unwrap().to_string().to_lowercase();
-            let split_index = content_type.find(";");
+            let split_index = content_type.find(';');
 
             if split_index.is_some() {
                 let (split_content_type, _) = content_type.split_at(split_index.unwrap());
@@ -85,7 +85,7 @@ pub async fn visit_page(
             .send()
             .await;
         let response: Response;
-        let is_good = !response_result.is_err();
+        let is_good = response_result.is_ok();
 
         {
             // Acquire a lock on the graph so that we can update it with our findings for this page
@@ -250,5 +250,5 @@ pub async fn visit_root_page(
         page_map.lock().unwrap().insert(url.clone(), root_index);
     }
 
-    return visit_page(root_index, client, options, graph, page_map, 0).await;
+    visit_page(root_index, client, options, graph, page_map, 0).await
 }
