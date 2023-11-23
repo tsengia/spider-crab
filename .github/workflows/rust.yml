@@ -16,5 +16,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Format Check
+      run: cargo fmt --check
+    - name: Linter Check
+      run: cargo clippy --no-deps -Dwarnings
     - name: Build
       run: cargo build --verbose
