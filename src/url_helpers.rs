@@ -71,3 +71,34 @@ pub fn parse_relative_or_absolute_url(current_url: &Url, url_str: &str) -> Optio
 
     Some(parsed_url)
 }
+
+#[test]
+fn test_parse_relative_url() {
+    let base = Url::parse("https://example.com/").unwrap();
+    let expected = Url::parse("https://example.com/relative/path").unwrap();
+
+    let result = parse_relative_or_absolute_url(&base, "relative/path").unwrap();
+
+    assert_eq!(expected, result);
+}
+
+#[test]
+fn test_parse_relative_url2() {
+    let base = Url::parse("https://example.com/").unwrap();
+    let expected = Url::parse("https://example.com/another_relative_path.html").unwrap();
+
+    let result = parse_relative_or_absolute_url(&base, "another_relative_path.html").unwrap();
+
+    assert_eq!(expected, result);
+}
+
+
+#[test]
+fn test_parse_absolute_url() {
+    let base = Url::parse("https://example.com/").unwrap();
+    let expected = Url::parse("https://this-is-another-website.org/").unwrap();
+
+    let result = parse_relative_or_absolute_url(&base, "https://this-is-another-website.org").unwrap();
+
+    assert_eq!(expected, result);
+}
