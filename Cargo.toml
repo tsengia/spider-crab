@@ -31,3 +31,6 @@ path = "src/lib.rs"
 [[bin]]
 name = "spider-crab"
 path = "src/main.rs"
+
+[dev-dependencies]
+mockito = "1.2.0"
