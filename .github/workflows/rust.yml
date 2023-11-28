@@ -21,5 +21,7 @@ jobs:
       run: cargo fmt --check
     - name: Linter Check
       run: cargo clippy --no-deps
+    - name: Cargo Test
+      run: cargo test
     - name: Build
       run: cargo build --verbose
