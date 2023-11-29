@@ -101,10 +101,11 @@ impl SpiderCrab {
         }
     }
 
-    pub async fn visit_website(mut self, url: &Url) -> bool {
+    pub async fn visit_website(mut self, url: &str) -> bool {
+        let url = Url::parse(url).unwrap();
         let map_mutex = Mutex::<&mut PageMap>::new(&mut self.map);
         let graph_mutex = Mutex::<&mut PageGraph>::new(&mut self.graph);
-        algo::visit_root_page(url, &self.client, &self.options, &graph_mutex, &map_mutex).await
+        algo::visit_root_page(&url, &self.client, &self.options, &graph_mutex, &map_mutex).await
     }
 }
 
