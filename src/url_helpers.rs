@@ -39,6 +39,27 @@ pub fn check_domain(domain_name: &str, url: &Url) -> bool {
     domain_name == url_domain
 }
 
+#[test]
+fn test_check_domain_match() {
+    let url = Url::parse("https://example.net").unwrap();
+    let domain_name = "example.net";
+    assert!(check_domain(domain_name, &url));
+}
+
+#[test]
+fn test_check_domain_match_with_params() {
+    let url = Url::parse("https://abcd123.com/another/file?q=3&c=234234").unwrap();
+    let domain_name = "abcd123.com";
+    assert!(check_domain(domain_name, &url));
+}
+
+#[test]
+fn test_check_domain_match_with_params_and_fragment() {
+    let url = Url::parse("http://example.com/another/file?param=2#fragment3").unwrap();
+    let domain_name = "example.com";
+    assert!(check_domain(domain_name, &url));
+}
+
 /// Parses a string into a URL. String can be an absolute URL, or a relative URL.
 /// If `url_str` is a relative URL, then it will be parsed relative to `current_url`
 /// Returns `None` if no valid URL could be parsed
