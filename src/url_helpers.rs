@@ -92,13 +92,13 @@ fn test_parse_relative_url2() {
     assert_eq!(expected, result);
 }
 
-
 #[test]
 fn test_parse_absolute_url() {
     let base = Url::parse("https://example.com/").unwrap();
     let expected = Url::parse("https://this-is-another-website.org/").unwrap();
 
-    let result = parse_relative_or_absolute_url(&base, "https://this-is-another-website.org").unwrap();
+    let result =
+        parse_relative_or_absolute_url(&base, "https://this-is-another-website.org").unwrap();
 
     assert_eq!(expected, result);
 }
