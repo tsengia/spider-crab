@@ -1,6 +1,5 @@
 use petgraph::graph::{DiGraph, NodeIndex};
 use scraper::{selector::CssLocalName, Selector};
-use std::cell::Cell;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use url::Url;
@@ -88,8 +87,8 @@ impl Default for SpiderOptions {
 pub struct SpiderCrab {
     pub options: SpiderOptions,
     pub client: reqwest::Client,
-    pub graph: Mutex<Cell<PageGraph>>,
-    pub map: Mutex<Cell<PageMap>>
+    pub graph: PageGraph,
+    pub map: PageMap
 }
 
 impl SpiderCrab {
@@ -97,9 +96,15 @@ impl SpiderCrab {
         Self {
             options: SpiderOptions::new(domain_name),
             client: reqwest::Client::new(),
-            map: Mutex::new(Cell::new(PageMap::new())),
-            graph: Mutex::new(Cell::new(PageGraph::new())),
+            map: PageMap::new(),
+            graph: PageGraph::new(),
         }
+    }
+
+    pub async fn visit_website(mut self, url: &Url) -> bool {
+        let map_mutex = Mutex::<&mut PageMap>::new(&mut self.map);
+        let graph_mutex = Mutex::<&mut PageGraph>::new(&mut self.graph);
+        algo::visit_root_page(url, &self.client, &self.options, &graph_mutex, &map_mutex).await
     }
 }
 
@@ -108,8 +113,8 @@ impl Default for SpiderCrab {
         Self {
             options: SpiderOptions::default(),
             client: reqwest::Client::new(),
-            map: Mutex::new(Cell::new(PageMap::new())),
-            graph: Mutex::new(Cell::new(PageGraph::new())),
+            map: PageMap::new(),
+            graph: PageGraph::new(),
         }
     }
 }
