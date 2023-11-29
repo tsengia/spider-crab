@@ -1,11 +1,16 @@
 use petgraph::graph::{DiGraph, NodeIndex};
 use scraper::{selector::CssLocalName, Selector};
+use std::cell::Cell;
 use std::collections::HashMap;
+use std::sync::Mutex;
 use url::Url;
 
 pub mod algo;
 pub mod error;
 pub mod url_helpers;
+
+#[cfg(test)]
+pub mod tests;
 
 pub struct Link {
     pub html: String,
@@ -62,6 +67,49 @@ impl SpiderOptions {
             quiet: false,
             verbose: false,
             skip_class: CssLocalName::from("scrab-skip"),
+        }
+    }
+}
+
+impl Default for SpiderOptions {
+    fn default() -> Self {
+        Self {
+            max_depth: -1,
+            link_selector: Box::new(Selector::parse("a").expect("Invalid title selector!")),
+            title_selector: Box::new(Selector::parse("title").expect("Invalid title selector!")),
+            domain_name: "localhost".to_string(),
+            quiet: false,
+            verbose: false,
+            skip_class: CssLocalName::from("scrab-skip"),
+        }
+    }
+}
+
+pub struct SpiderCrab {
+    pub options: SpiderOptions,
+    pub client: reqwest::Client,
+    pub graph: Mutex<Cell<PageGraph>>,
+    pub map: Mutex<Cell<PageMap>>
+}
+
+impl SpiderCrab {
+    pub fn new(domain_name: &str) -> Self {
+        Self {
+            options: SpiderOptions::new(domain_name),
+            client: reqwest::Client::new(),
+            map: Mutex::new(Cell::new(PageMap::new())),
+            graph: Mutex::new(Cell::new(PageGraph::new())),
+        }
+    }
+}
+
+impl Default for SpiderCrab { 
+    fn default() -> Self {
+        Self {
+            options: SpiderOptions::default(),
+            client: reqwest::Client::new(),
+            map: Mutex::new(Cell::new(PageMap::new())),
+            graph: Mutex::new(Cell::new(PageGraph::new())),
         }
     }
 }
