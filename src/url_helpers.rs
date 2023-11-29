@@ -7,9 +7,7 @@ use url::{ParseError, Url};
 /// Returns `Some(Url)` if extract + parse was successful
 /// Returns `None` if extraction or parsing failed
 pub fn get_url_from_element(element: ElementRef, current_url: &Url) -> Option<Url> {
-    let href_attribute = element.attr("href");
-
-    href_attribute?;
+    let href_attribute = element.attr("href")?;
 
     let next_url_str = href_attribute.unwrap();
 
