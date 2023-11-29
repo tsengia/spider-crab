@@ -9,7 +9,7 @@ use url::{ParseError, Url};
 pub fn get_url_from_element(element: ElementRef, current_url: &Url) -> Option<Url> {
     let href_attribute = element.attr("href")?;
 
-    let next_url_str = href_attribute.unwrap();
+    let next_url_str = href_attribute;
 
     if next_url_str.is_empty() {
         // href attribute value is ""
