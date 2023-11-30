@@ -30,13 +30,16 @@ async fn test_simple_page() {
     // Make sure that the page graph contains two pages
     assert_eq!(graph.node_count(), 2);
 
+    // Make sure there is only one link in the page graph
+    assert_eq!(graph.edge_count(), 1);
+
     let map = &spider_crab.map;
 
-    // Make sure that the page map contains the singular page
+    // Make sure that the page map contains the mock page
     assert!(map.contains_key(&parsed_url));
 
-    // Make sure there is only one page in the page map
-    assert_eq!(map.len(), 1);
+    // Make sure there are two pages in the page map
+    assert_eq!(map.len(), 2);
 }
 
 #[tokio::test]
@@ -72,6 +75,9 @@ async fn test_two_pages() {
     let graph = &spider_crab.graph;
     // Make sure that the page graph contains two pages
     assert_eq!(graph.node_count(), 2);
+
+    // Make sure that the page graph contains four links
+    assert_eq!(graph.edge_count(), 4);
 
     let map = &spider_crab.map;
 
