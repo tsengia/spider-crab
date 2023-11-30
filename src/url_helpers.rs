@@ -59,8 +59,8 @@ fn test_check_host_match_ipv4() {
 
 #[test]
 fn test_check_host_match_ipv6() {
-    let url = Url::parse("https://::1").unwrap();
-    let host_name = "::1";
+    let url = Url::parse("https://[::1]").unwrap();
+    let host_name = "[::1]";
     assert!(check_host(
         &vec!(Host::parse(host_name).unwrap().to_owned()),
         &url
