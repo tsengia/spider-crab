@@ -88,7 +88,7 @@ pub struct SpiderCrab {
     pub options: SpiderOptions,
     pub client: reqwest::Client,
     pub graph: PageGraph,
-    pub map: PageMap
+    pub map: PageMap,
 }
 
 impl SpiderCrab {
@@ -109,7 +109,7 @@ impl SpiderCrab {
     }
 }
 
-impl Default for SpiderCrab { 
+impl Default for SpiderCrab {
     fn default() -> Self {
         Self {
             options: SpiderOptions::default(),
