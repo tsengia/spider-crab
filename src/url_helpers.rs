@@ -25,7 +25,7 @@ pub fn get_url_from_element(element: ElementRef, current_url: &Url) -> Option<Ur
 /// Attempts to grab the host from `url` and see if it matches any element listed in `hosts`
 /// Returns `true` if `url` matches any entry of `hosts`
 /// Returns `false` if `url` fails to match any entry in `hosts`, or if failed to obtain a host for `url`
-pub fn check_host(hosts: &Vec<Host<String>>, url: &Url) -> bool {
+pub fn check_host(hosts: &[Host<String>], url: &Url) -> bool {
     let url_host = url.host();
     if url_host.is_none() {
         // URL doesn't have a host associated with it
