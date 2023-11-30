@@ -1,10 +1,6 @@
 use clap::{Arg, ArgAction, Command};
-use std::sync::Mutex;
-use url::Url;
-
-use spider_crab::algo::visit_root_page;
 use spider_crab::error::SpiderError;
-use spider_crab::{PageGraph, PageMap, SpiderOptions};
+use spider_crab::SpiderCrab;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
@@ -48,8 +44,6 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         .expect("No URL supplied!")
         .as_str();
 
-    let url = Url::parse(url_str).unwrap();
-
     let depth: i32 = *matches.get_one::<i32>("depth").expect("Invalid depth!");
 
     let quiet: bool = matches.get_flag("quiet");
@@ -59,26 +53,23 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         println!("Spider Crab");
     }
 
-    let mut options = SpiderOptions::new(url.domain().unwrap());
-    options.max_depth = depth;
-    options.verbose = verbose;
-    let client = reqwest::Client::new();
+    let mut spider_crab = SpiderCrab::default();
+    spider_crab.options.add_host(url_str);
 
-    let mut map = PageMap::new();
-    let mut graph = PageGraph::new();
+    spider_crab.options.max_depth = depth;
+    spider_crab.options.verbose = verbose;
 
     const EXPECTED_PAGES: usize = 50;
-    graph.reserve_edges(200);
-    graph.reserve_nodes(EXPECTED_PAGES);
-    map.reserve(EXPECTED_PAGES);
+    spider_crab.graph.reserve_edges(200);
+    spider_crab.graph.reserve_nodes(EXPECTED_PAGES);
+    spider_crab.map.reserve(EXPECTED_PAGES);
 
-    let graph_mutex = Mutex::new(&mut graph);
-    let map_mutex = Mutex::new(&mut map);
-    let result = visit_root_page(&url, &client, &options, &graph_mutex, &map_mutex).await;
+    let result = spider_crab.visit_website(url_str).await;
 
     if !quiet {
-        println!("Discovered {} pages", graph.node_count());
-        println!("Discovered {} links", graph.edge_count());
+        println!("Discovered {} pages", spider_crab.graph.node_count());
+        println!("Visited {} pages", spider_crab.map.len());
+        println!("Discovered {} links", spider_crab.graph.edge_count());
     }
 
     if result {
