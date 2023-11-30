@@ -68,6 +68,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     if !quiet {
         println!("Discovered {} pages", spider_crab.graph.node_count());
+        println!("Visited {} pages", spider_crab.map.len());
         println!("Discovered {} links", spider_crab.graph.edge_count());
     }
 
