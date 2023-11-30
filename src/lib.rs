@@ -70,7 +70,8 @@ impl SpiderOptions {
 
     /// Add the host referenced by `url` to the `hosts` vector. This allows the spider crab algorithm to traverse the newly added host
     pub fn add_host(&mut self, url: &str) {
-        self.hosts.push(Url::parse(url).unwrap().host().unwrap().to_owned())
+        self.hosts
+            .push(Url::parse(url).unwrap().host().unwrap().to_owned())
     }
 }
 
@@ -93,9 +94,19 @@ impl Default for SpiderOptions {
 
 #[derive(Default)]
 pub struct SpiderCrab {
+    /// Options controlling behavior of the traversal algorithm
     pub options: SpiderOptions,
+
+    /// HTTP client that requests will be sent out with
     pub client: reqwest::Client,
+
+    /// Graph of all pages discovered
+    /// Not all discovered pages have been visited
+    /// Not all discovered pages are valid (ie. if you attempt to visit a page, it may return a 404!)
     pub graph: PageGraph,
+
+    /// HashMap of pages that have already been visited
+    /// Includes pages that are visited and return an HTTP error code
     pub map: PageMap,
 }
 
