@@ -57,12 +57,12 @@ pub struct SpiderOptions {
 }
 
 impl SpiderOptions {
-    /// Convenience constructor that allows for setting a list of domain names to traverse across
-    pub fn new(target_hosts: &[&str]) -> Self {
+    /// Convenience constructor that allows for setting a list of URLs to traverse across
+    pub fn new(target_urls: &[&str]) -> Self {
         Self {
-            hosts: target_hosts
+            hosts: target_urls
                 .iter()
-                .map(|s| Host::parse(s).unwrap().to_owned())
+                .map(|s| Url::parse(s).unwrap().host().unwrap().to_owned())
                 .collect(),
             ..Default::default()
         }
@@ -70,7 +70,7 @@ impl SpiderOptions {
 
     /// Add the host referenced by `url` to the `hosts` vector. This allows the spider crab algorithm to traverse the newly added host
     pub fn add_host(&mut self, url: &str) {
-        self.hosts.push(Host::parse(url).unwrap().to_owned())
+        self.hosts.push(Url::parse(url).unwrap().host().unwrap().to_owned())
     }
 }
 
