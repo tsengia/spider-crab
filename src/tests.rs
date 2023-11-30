@@ -27,8 +27,8 @@ async fn test_simple_page() {
     mock.assert();
 
     let graph = &spider_crab.graph;
-    // Make sure that the page graph contains only one page
-    assert_eq!(graph.node_count(), 1);
+    // Make sure that the page graph contains two pages
+    assert_eq!(graph.node_count(), 2);
 
     let map = &spider_crab.map;
 
