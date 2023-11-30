@@ -7,7 +7,7 @@ use scraper::{Element, Html};
 use std::sync::Mutex;
 use url::Url;
 
-use crate::url_helpers::{check_domain, get_url_from_element};
+use crate::url_helpers::{check_host, get_url_from_element};
 use crate::{Link, Page, PageGraph, PageMap, SpiderOptions};
 
 /// Attempts to retrieve the HTTP ContentType from a Response and check if it is some form of HTML document.
@@ -118,7 +118,7 @@ pub async fn visit_page(
             }
 
             // Check to see if the domain is inside the starting domain.
-            let parse_html = check_domain(&options.domain_name, &url);
+            let parse_html = check_host(&options.hosts, &url);
 
             if !parse_html {
                 if options.verbose {

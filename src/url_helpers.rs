@@ -1,7 +1,7 @@
 //! Helper functions called by the page traversal algorithm
 
 use scraper::ElementRef;
-use url::{ParseError, Url};
+use url::{Host, ParseError, Url};
 
 /// Attempt to extract and parse a URL from a `<a>` HTML element
 /// Returns `Some(Url)` if extract + parse was successful
@@ -22,40 +22,69 @@ pub fn get_url_from_element(element: ElementRef, current_url: &Url) -> Option<Ur
     next_url
 }
 
-/// Attempts to grab the domain name from `url` and compare it against `domain_name`.
-/// Returns `true` if domain names match.
-/// Returns `false` if domain names are different, or if failed to obtain domain name for `url`
-pub fn check_domain(domain_name: &str, url: &Url) -> bool {
-    let url_domain = url.domain();
-    if url_domain.is_none() {
-        // URL doesn't have a domain associated with it
+/// Attempts to grab the host from `url` and see if it matches any element listed in `hosts`
+/// Returns `true` if `url` matches any entry of `hosts`
+/// Returns `false` if `url` fails to match any entry in `hosts`, or if failed to obtain a host for `url`
+pub fn check_host(hosts: &Vec<Host<String>>, url: &Url) -> bool {
+    let url_host = url.host();
+    if url_host.is_none() {
+        // URL doesn't have a host associated with it
         return false;
     }
-    let url_domain = url_domain.unwrap();
+    let url_host = url_host.unwrap().to_owned();
 
-    // Return true if the two domains match
-    domain_name == url_domain
+    // Return true if the domain/IP + port matches any entry in domain_names
+    hosts.iter().any(|h| *h == url_host)
 }
 
 #[test]
-fn test_check_domain_match() {
+fn test_check_host_match() {
     let url = Url::parse("https://example.net").unwrap();
-    let domain_name = "example.net";
-    assert!(check_domain(domain_name, &url));
+    let host_name = "example.net";
+    assert!(check_host(
+        &vec!(Host::parse(host_name).unwrap().to_owned()),
+        &url
+    ));
+}
+
+#[test]
+fn test_check_host_match_ipv4() {
+    let url = Url::parse("https://172.0.0.1").unwrap();
+    let host_name = "172.0.0.1";
+    assert!(check_host(
+        &vec!(Host::parse(host_name).unwrap().to_owned()),
+        &url
+    ));
+}
+
+#[test]
+fn test_check_host_match_ipv6() {
+    let url = Url::parse("https://::1").unwrap();
+    let host_name = "::1";
+    assert!(check_host(
+        &vec!(Host::parse(host_name).unwrap().to_owned()),
+        &url
+    ));
 }
 
 #[test]
 fn test_check_domain_match_with_params() {
     let url = Url::parse("https://abcd123.com/another/file?q=3&c=234234").unwrap();
-    let domain_name = "abcd123.com";
-    assert!(check_domain(domain_name, &url));
+    let host_name = "abcd123.com";
+    assert!(check_host(
+        &vec!(Host::parse(host_name).unwrap().to_owned()),
+        &url
+    ));
 }
 
 #[test]
 fn test_check_domain_match_with_params_and_fragment() {
     let url = Url::parse("http://example.com/another/file?param=2#fragment3").unwrap();
-    let domain_name = "example.com";
-    assert!(check_domain(domain_name, &url));
+    let host_name = "example.com";
+    assert!(check_host(
+        &vec!(Host::parse(host_name).unwrap().to_owned()),
+        &url
+    ));
 }
 
 /// Parses a string into a URL. String can be an absolute URL, or a relative URL.
