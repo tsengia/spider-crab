@@ -16,7 +16,8 @@ pub enum SpiderErrorType {
     BrokenLink,
     MissingHref,
     EmptyHref,
-    MissingTitle
+    MissingTitle,
+    Other
 }
 
 impl std::error::Error for SpiderError {}
@@ -33,9 +34,10 @@ impl SpiderError {
         match &self.error_type {
             SpiderErrorType::BrokenLink => format!("Page at \"{:?}\" contains a link pointing to \"{:?}\", but \"{:?}\" is a bad link!", self.source_page, self.target_page, self.target_page),
             SpiderErrorType::InvalidURL => format!("Page at \"{:?}\" contains a link with no href attribute!", self.source_page),
-            SpiderErrorType::MissingHref => format!("Page at \"{:?}\" contains a link with an invalid URL '{:?}'!", self.source_page, self.target_page),
+            SpiderErrorType::MissingHref => format!("Page at \"{:?}\" contains a link with an invalid URL \"{:?}\"!", self.source_page, self.target_page),
             SpiderErrorType::EmptyHref => format!("Page at \"{:?}\" contains a link with an empty href attribute!", self.source_page),
             SpiderErrorType::MissingTitle => format!("Page at \"{:?}\" does not have a title!", self.source_page),
+            SpiderErrorType::Other => format!("Other Error! source_page=\"{:?}\", http_error_code={:?}", self.source_page, self.http_error_code),
         }
     }
 }
