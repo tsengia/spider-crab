@@ -82,7 +82,10 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             println!("Something failed!");
         }
         let e = Box::new(SpiderError {
-            message: String::from("Check failed!"),
+            error_type: spider_crab::error::SpiderErrorType::Other,
+            source_page: Some("Unknown".to_string()),
+            http_error_code: None,
+            target_page: None
         }) as Box<dyn std::error::Error>;
         return Err(e);
     }
