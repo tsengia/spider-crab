@@ -1,13 +1,16 @@
 //! Helper functions called by the page traversal algorithm
 
+use crate::error::SpiderErrorType;
 use scraper::ElementRef;
 use url::{Host, ParseError, Url};
-use crate::error::SpiderErrorType;
 
 /// Attempt to extract and parse a URL from a `<a>` HTML element
 /// Returns `Some(Url)` if extract + parse was successful
 /// Returns `None` if extraction or parsing failed
-pub fn get_url_from_element(element: ElementRef, current_url: &Url) -> Result<Url, SpiderErrorType> {
+pub fn get_url_from_element(
+    element: ElementRef,
+    current_url: &Url,
+) -> Result<Url, SpiderErrorType> {
     let href_attribute = element.attr("href");
 
     if href_attribute.is_none() {

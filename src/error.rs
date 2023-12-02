@@ -6,9 +6,8 @@ pub struct SpiderError {
     pub source_page: Option<String>,
     pub target_page: Option<String>,
     pub http_error_code: Option<u16>,
-    pub error_type: SpiderErrorType
+    pub error_type: SpiderErrorType,
 }
-
 
 #[derive(Debug)]
 pub enum SpiderErrorType {
@@ -17,7 +16,7 @@ pub enum SpiderErrorType {
     MissingHref,
     EmptyHref,
     MissingTitle,
-    Other
+    Other,
 }
 
 impl std::error::Error for SpiderError {}

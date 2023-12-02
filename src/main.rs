@@ -85,7 +85,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             error_type: spider_crab::error::SpiderErrorType::Other,
             source_page: Some("Unknown".to_string()),
             http_error_code: None,
-            target_page: None
+            target_page: None,
         }) as Box<dyn std::error::Error>;
         return Err(e);
     }
