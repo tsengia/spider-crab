@@ -162,7 +162,8 @@ pub async fn visit_page(
 
             // Parse out a URL from the link
             let next_url = get_url_from_element(l, &url);
-            if next_url.is_none() {
+            if next_url.is_err() {
+                // TODO: Transform the error code into an actual error and return it
                 println!("Failed to get URL from element: {}", l.html());
                 found_problem = true;
                 continue;
