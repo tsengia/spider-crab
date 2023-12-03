@@ -49,10 +49,6 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let quiet: bool = matches.get_flag("quiet");
     let verbose: bool = matches.get_flag("verbose");
 
-    if !quiet {
-        println!("Spider Crab");
-    }
-
     let mut spider_crab = SpiderCrab::default();
     spider_crab.options.add_host(url_str);
 
@@ -79,10 +75,18 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     } else {
         if !quiet {
-            println!("Something failed!");
+            for page in spider_crab.graph.node_weights() {
+                for error in &page.errors {
+                    println!("{}", error);
+                }
+            }
         }
         let e = Box::new(SpiderError {
-            message: String::from("Check failed!"),
+            error_type: spider_crab::error::SpiderErrorType::FailedCrawl,
+            source_page: None,
+            http_error_code: None,
+            target_page: None,
+            html: None,
         }) as Box<dyn std::error::Error>;
         return Err(e);
     }

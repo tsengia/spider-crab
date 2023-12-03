@@ -53,54 +53,43 @@ fn check_content_type(response: &Response) -> (bool, Option<String>) {
 #[async_recursion]
 pub async fn visit_page(
     node_index: NodeIndex,
+    url: Url,
     client: &Client,
     options: &SpiderOptions,
     graph_mutex: &Mutex<&mut PageGraph>,
     page_map_mutex: &Mutex<&mut PageMap>,
     current_depth: i32,
 ) -> bool {
-    let url: Url;
-    let mut new_nodes = Vec::<NodeIndex>::new();
+    let mut new_nodes = Vec::<(NodeIndex, Url)>::new();
     let mut found_problem: bool = false;
     // Reserve some space for our new node indices.
     new_nodes.reserve(64);
 
     {
-        // Momentarily acquire the lock so that we can grab the URL of the page
-        url = graph_mutex
-            .lock()
-            .unwrap()
-            .node_weight(node_index)
-            .unwrap()
-            .url
-            .clone();
-    } // End of scope, releases the lock
-
-    {
-        // Start of new scope, this is to get the document, parse links, and update the graph
-
         // Send an HTTP(S) GET request for the desired URL
         let response_result = client
             .request(reqwest::Method::GET, url.clone())
             .send()
             .await;
         let response: Response;
-        let is_good = response_result.is_ok();
 
         {
             // Acquire a lock on the graph so that we can update it with our findings for this page
             let mut graph = graph_mutex.lock().unwrap();
             let page = graph.node_weight_mut(node_index).unwrap();
 
-            if !is_good {
-                page.good = false;
-                if !options.quiet {
+            if response_result.is_err() {
+                if options.verbose {
                     println!("Found bad link! {}", url);
                 }
+                page.status_code = response_result.err().unwrap().status();
                 return false;
             }
 
             response = response_result.unwrap();
+
+            // Record the HTTP status code
+            page.status_code = Some(response.status());
 
             // Attempt to get the Content-Type of the page
             let (parse_html, content_type) = check_content_type(&response);
@@ -133,18 +122,22 @@ pub async fn visit_page(
 
         // Acquire a lock on the graph so that we can update it with our findings for this page
         let mut graph = graph_mutex.lock().unwrap();
-        let page = graph.node_weight_mut(node_index).unwrap();
-        if contents.is_err() {
-            page.good = false;
-            if !options.quiet {
-                println!("Failed to get contents of page! {}", url);
+        {
+            let page = graph.node_weight_mut(node_index).unwrap();
+            if contents.is_err() {
+                page.good = Some(false);
+                if options.verbose {
+                    println!("Failed to get contents of page! {}", url);
+                }
+                return false;
             }
-            return false;
         }
         let contents = contents.unwrap();
         let html = Html::parse_document(contents.as_str());
-
-        page.good = true;
+        {
+            let page = graph.node_weight_mut(node_index).unwrap();
+            page.good = Some(true);
+        }
 
         if options.verbose {
             println!("Visited page {}", url.as_str());
@@ -162,9 +155,15 @@ pub async fn visit_page(
 
             // Parse out a URL from the link
             let next_url = get_url_from_element(l, &url);
-            if next_url.is_none() {
-                println!("Failed to get URL from element: {}", l.html());
+            if next_url.is_err() {
+                if options.verbose {
+                    println!("Failed to get URL from element: {}", l.html());
+                }
                 found_problem = true;
+                {
+                    let page = graph.node_weight_mut(node_index).unwrap();
+                    page.errors.push(next_url.unwrap_err());
+                }
                 continue;
             }
             let next_url = next_url.unwrap();
@@ -178,13 +177,7 @@ pub async fn visit_page(
             }
 
             // Target URL has not been visited yet, add a node to the graph
-            let new_node = graph.add_node(Page {
-                url: next_url.clone(),
-                title: None,
-                content_type: None,
-                good: false,
-                checked: false,
-            });
+            let new_node = graph.add_node(Page::new(&next_url));
 
             // Add an edge to the graph connecting current page to the target page
             graph.add_edge(node_index, new_node, Link { html: l.html() });
@@ -199,7 +192,7 @@ pub async fn visit_page(
                 continue;
             }
 
-            new_nodes.push(new_node);
+            new_nodes.push((new_node, next_url));
         }
     }
 
@@ -207,9 +200,10 @@ pub async fn visit_page(
     futures_vec.reserve_exact(new_nodes.len());
 
     // Create a future for each node we discovered
-    for node in new_nodes {
+    for (node, next_url) in new_nodes {
         futures_vec.push(visit_page(
             node,
+            next_url,
             client,
             options,
             graph_mutex,
@@ -237,18 +231,12 @@ pub async fn visit_root_page(
     let root_index: NodeIndex;
     {
         // Insert the root page as a node into the graph
-        root_index = graph.lock().unwrap().add_node(Page {
-            title: None,
-            content_type: None,
-            good: false,
-            checked: false,
-            url: url.clone(),
-        });
+        root_index = graph.lock().unwrap().add_node(Page::new(url));
 
         // Mark the root node as visited because visit_page assumes
         //  that the target page is already marked as visited
         page_map.lock().unwrap().insert(url.clone(), root_index);
     }
 
-    visit_page(root_index, client, options, graph, page_map, 0).await
+    visit_page(root_index, url.clone(), client, options, graph, page_map, 0).await
 }

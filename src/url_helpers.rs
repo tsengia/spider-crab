@@ -1,25 +1,55 @@
 //! Helper functions called by the page traversal algorithm
 
+use crate::error::{SpiderError, SpiderErrorType};
 use scraper::ElementRef;
 use url::{Host, ParseError, Url};
 
 /// Attempt to extract and parse a URL from a `<a>` HTML element
 /// Returns `Some(Url)` if extract + parse was successful
 /// Returns `None` if extraction or parsing failed
-pub fn get_url_from_element(element: ElementRef, current_url: &Url) -> Option<Url> {
-    let href_attribute = element.attr("href")?;
+pub fn get_url_from_element(element: ElementRef, current_url: &Url) -> Result<Url, SpiderError> {
+    let href_attribute = element.attr("href");
+
+    if href_attribute.is_none() {
+        // Element does not have an href attribute
+        return Err(SpiderError {
+            error_type: SpiderErrorType::MissingHref,
+            source_page: Some(current_url.to_string()),
+            target_page: None,
+            http_error_code: None,
+            html: Some(element.html()),
+        });
+    }
+
+    let href_attribute = href_attribute.unwrap();
 
     let next_url_str = href_attribute;
 
     if next_url_str.is_empty() {
-        // href attribute value is ""
-        return None;
+        // Element's href attribute value is ""
+        return Err(SpiderError {
+            error_type: SpiderErrorType::EmptyHref,
+            source_page: Some(current_url.to_string()),
+            target_page: None,
+            http_error_code: None,
+            html: Some(element.html()),
+        });
     }
 
     let next_url = parse_relative_or_absolute_url(current_url, next_url_str);
-    next_url.as_ref()?;
 
-    next_url
+    if next_url.is_none() {
+        // Failed to parse the URL, report it as an error
+        return Err(SpiderError {
+            error_type: SpiderErrorType::InvalidURL,
+            source_page: Some(current_url.to_string()),
+            target_page: Some(next_url_str.to_string()),
+            http_error_code: None,
+            html: Some(element.html()),
+        });
+    }
+
+    Ok(next_url.unwrap())
 }
 
 /// Attempts to grab the host from `url` and see if it matches any element listed in `hosts`
