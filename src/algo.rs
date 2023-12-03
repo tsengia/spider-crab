@@ -79,8 +79,7 @@ pub async fn visit_page(
             let page = graph.node_weight_mut(node_index).unwrap();
 
             if response_result.is_err() {
-                // TODO: Insert error into graph
-                if !options.quiet {
+                if options.verbose {
                     println!("Found bad link! {}", url);
                 }
                 page.status_code = response_result.err().unwrap().status();
@@ -127,7 +126,7 @@ pub async fn visit_page(
             let page = graph.node_weight_mut(node_index).unwrap();
             if contents.is_err() {
                 page.good = Some(false);
-                if !options.quiet {
+                if options.verbose {
                     println!("Failed to get contents of page! {}", url);
                 }
                 return false;
@@ -157,7 +156,7 @@ pub async fn visit_page(
             // Parse out a URL from the link
             let next_url = get_url_from_element(l, &url);
             if next_url.is_err() {
-                if !options.quiet {
+                if options.verbose {
                     println!("Failed to get URL from element: {}", l.html());
                 }
                 found_problem = true;

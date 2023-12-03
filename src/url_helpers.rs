@@ -17,6 +17,7 @@ pub fn get_url_from_element(element: ElementRef, current_url: &Url) -> Result<Ur
             source_page: Some(current_url.to_string()),
             target_page: None,
             http_error_code: None,
+            html: Some(element.html()),
         });
     }
 
@@ -31,6 +32,7 @@ pub fn get_url_from_element(element: ElementRef, current_url: &Url) -> Result<Ur
             source_page: Some(current_url.to_string()),
             target_page: None,
             http_error_code: None,
+            html: Some(element.html()),
         });
     }
 
@@ -43,6 +45,7 @@ pub fn get_url_from_element(element: ElementRef, current_url: &Url) -> Result<Ur
             source_page: Some(current_url.to_string()),
             target_page: Some(next_url_str.to_string()),
             http_error_code: None,
+            html: Some(element.html()),
         });
     }
 
