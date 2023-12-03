@@ -22,11 +22,11 @@ pub struct Page {
     /// Content-Type that was given when this page was visited
     pub content_type: Option<String>,
     /// True if the page was visited and a 2XX HTTP status code was returned, false otherwise
-    pub good: bool,
+    pub good: Option<bool>,
     /// True if this page was visited, false otherwise
     pub checked: bool,
     /// URL that this page is represented by. Does not include URL parameters or fragments
-    pub url: Url,
+    pub url: Url
 }
 
 /// Helper type for the HashMap that maps Urls to Nodes in the graph
