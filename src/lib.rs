@@ -1,4 +1,5 @@
 use petgraph::graph::{DiGraph, NodeIndex};
+use reqwest::StatusCode;
 use scraper::{selector::CssLocalName, Selector};
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -26,7 +27,22 @@ pub struct Page {
     /// True if this page was visited, false otherwise
     pub checked: bool,
     /// URL that this page is represented by. Does not include URL parameters or fragments
-    pub url: Url
+    pub url: Url,
+    /// HTTP status code returned when this page was visited
+    pub status_code: Option<StatusCode>
+}
+
+impl Page {
+    pub fn new(url: &Url) -> Self {
+        Self {
+            title: None,
+            content_type: None,
+            good: None,
+            checked: false,
+            url: url.clone(),
+            status_code: None
+        }
+    }
 }
 
 /// Helper type for the HashMap that maps Urls to Nodes in the graph

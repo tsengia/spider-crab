@@ -167,13 +167,7 @@ pub async fn visit_page(
             }
 
             // Target URL has not been visited yet, add a node to the graph
-            let new_node = graph.add_node(Page {
-                url: next_url.clone(),
-                title: None,
-                content_type: None,
-                good: None,
-                checked: false
-            });
+            let new_node = graph.add_node(Page::new(&next_url));
 
             // Add an edge to the graph connecting current page to the target page
             graph.add_edge(node_index, new_node, Link { html: l.html() });
@@ -227,13 +221,7 @@ pub async fn visit_root_page(
     let root_index: NodeIndex;
     {
         // Insert the root page as a node into the graph
-        root_index = graph.lock().unwrap().add_node(Page {
-            title: None,
-            content_type: None,
-            good: None,
-            checked: false,
-            url: url.clone()
-        });
+        root_index = graph.lock().unwrap().add_node(Page::new(url));
 
         // Mark the root node as visited because visit_page assumes
         //  that the target page is already marked as visited
