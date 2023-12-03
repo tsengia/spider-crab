@@ -60,14 +60,12 @@ pub async fn visit_page(
     page_map_mutex: &Mutex<&mut PageMap>,
     current_depth: i32,
 ) -> bool {
-    let mut new_nodes = Vec::<(NodeIndex,Url)>::new();
+    let mut new_nodes = Vec::<(NodeIndex, Url)>::new();
     let mut found_problem: bool = false;
     // Reserve some space for our new node indices.
     new_nodes.reserve(64);
 
     {
-        // Start of new scope, this is to get the document, parse links, and update the graph
-
         // Send an HTTP(S) GET request for the desired URL
         let response_result = client
             .request(reqwest::Method::GET, url.clone())
@@ -80,15 +78,19 @@ pub async fn visit_page(
             let mut graph = graph_mutex.lock().unwrap();
             let page = graph.node_weight_mut(node_index).unwrap();
 
-            if  response_result.is_err() {
+            if response_result.is_err() {
                 // TODO: Insert error into graph
                 if !options.quiet {
                     println!("Found bad link! {}", url);
                 }
+                page.status_code = response_result.err().unwrap().status();
                 return false;
             }
 
             response = response_result.unwrap();
+
+            // Record the HTTP status code
+            page.status_code = Some(response.status());
 
             // Attempt to get the Content-Type of the page
             let (parse_html, content_type) = check_content_type(&response);
@@ -121,18 +123,22 @@ pub async fn visit_page(
 
         // Acquire a lock on the graph so that we can update it with our findings for this page
         let mut graph = graph_mutex.lock().unwrap();
-        let page = graph.node_weight_mut(node_index).unwrap();
-        if contents.is_err() {
-            page.good = Some(false);
-            if !options.quiet {
-                println!("Failed to get contents of page! {}", url);
+        {
+            let page = graph.node_weight_mut(node_index).unwrap();
+            if contents.is_err() {
+                page.good = Some(false);
+                if !options.quiet {
+                    println!("Failed to get contents of page! {}", url);
+                }
+                return false;
             }
-            return false;
         }
         let contents = contents.unwrap();
         let html = Html::parse_document(contents.as_str());
-
-        page.good = Some(true);
+        {
+            let page = graph.node_weight_mut(node_index).unwrap();
+            page.good = Some(true);
+        }
 
         if options.verbose {
             println!("Visited page {}", url.as_str());
@@ -151,9 +157,14 @@ pub async fn visit_page(
             // Parse out a URL from the link
             let next_url = get_url_from_element(l, &url);
             if next_url.is_err() {
-                // TODO: Transform the error code into an actual error and return it
-                println!("Failed to get URL from element: {}", l.html());
+                if !options.quiet {
+                    println!("Failed to get URL from element: {}", l.html());
+                }
                 found_problem = true;
+                {
+                    let page = graph.node_weight_mut(node_index).unwrap();
+                    page.errors.push(next_url.unwrap_err());
+                }
                 continue;
             }
             let next_url = next_url.unwrap();

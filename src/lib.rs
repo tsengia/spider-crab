@@ -1,3 +1,4 @@
+use error::SpiderError;
 use petgraph::graph::{DiGraph, NodeIndex};
 use reqwest::StatusCode;
 use scraper::{selector::CssLocalName, Selector};
@@ -29,7 +30,9 @@ pub struct Page {
     /// URL that this page is represented by. Does not include URL parameters or fragments
     pub url: Url,
     /// HTTP status code returned when this page was visited
-    pub status_code: Option<StatusCode>
+    pub status_code: Option<StatusCode>,
+    /// Vector of errors encountered while scraping this page
+    pub errors: Vec<SpiderError>,
 }
 
 impl Page {
@@ -40,7 +43,8 @@ impl Page {
             good: None,
             checked: false,
             url: url.clone(),
-            status_code: None
+            status_code: None,
+            errors: Vec::<SpiderError>::new(),
         }
     }
 }

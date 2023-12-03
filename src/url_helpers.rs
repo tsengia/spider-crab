@@ -1,21 +1,23 @@
 //! Helper functions called by the page traversal algorithm
 
-use crate::error::SpiderErrorType;
+use crate::error::{SpiderError, SpiderErrorType};
 use scraper::ElementRef;
 use url::{Host, ParseError, Url};
 
 /// Attempt to extract and parse a URL from a `<a>` HTML element
 /// Returns `Some(Url)` if extract + parse was successful
 /// Returns `None` if extraction or parsing failed
-pub fn get_url_from_element(
-    element: ElementRef,
-    current_url: &Url,
-) -> Result<Url, SpiderErrorType> {
+pub fn get_url_from_element(element: ElementRef, current_url: &Url) -> Result<Url, SpiderError> {
     let href_attribute = element.attr("href");
 
     if href_attribute.is_none() {
         // Element does not have an href attribute
-        return Err(SpiderErrorType::MissingHref);
+        return Err(SpiderError {
+            error_type: SpiderErrorType::MissingHref,
+            source_page: Some(current_url.to_string()),
+            target_page: None,
+            http_error_code: None,
+        });
     }
 
     let href_attribute = href_attribute.unwrap();
@@ -24,14 +26,24 @@ pub fn get_url_from_element(
 
     if next_url_str.is_empty() {
         // Element's href attribute value is ""
-        return Err(SpiderErrorType::EmptyHref);
+        return Err(SpiderError {
+            error_type: SpiderErrorType::EmptyHref,
+            source_page: Some(current_url.to_string()),
+            target_page: None,
+            http_error_code: None,
+        });
     }
 
     let next_url = parse_relative_or_absolute_url(current_url, next_url_str);
 
     if next_url.is_none() {
         // Failed to parse the URL, report it as an error
-        return Err(SpiderErrorType::InvalidURL);
+        return Err(SpiderError {
+            error_type: SpiderErrorType::InvalidURL,
+            source_page: Some(current_url.to_string()),
+            target_page: Some(next_url_str.to_string()),
+            http_error_code: None,
+        });
     }
 
     Ok(next_url.unwrap())
