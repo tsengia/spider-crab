@@ -78,11 +78,13 @@ pub async fn visit_page(
             let mut graph = graph_mutex.lock().unwrap();
             let page = graph.node_weight_mut(node_index).unwrap();
 
+            page.checked = true;
             if response_result.is_err() {
                 if options.verbose {
                     println!("Found bad link! {}", url);
                 }
                 page.status_code = response_result.err().unwrap().status();
+                page.good = Some(false);
                 return false;
             }
 
@@ -137,6 +139,12 @@ pub async fn visit_page(
         {
             let page = graph.node_weight_mut(node_index).unwrap();
             page.good = Some(true);
+
+            let title_element = html.select(options.title_selector.as_ref());
+            let title_element = title_element.last();
+            if title_element.is_some() {
+                page.title = Some(title_element.unwrap().inner_html())
+            }
         }
 
         if options.verbose {
