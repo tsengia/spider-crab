@@ -8,16 +8,19 @@ use url::{Host, Url};
 
 pub mod algo;
 pub mod error;
+pub mod dot;
 pub mod url_helpers;
 
 #[cfg(test)]
 pub mod tests;
 
+#[derive(Debug)]
 pub struct Link {
     pub html: String,
 }
 
 /// Representation of a document/page
+#[derive(Debug)]
 pub struct Page {
     /// Title of the page
     pub title: Option<String>,
