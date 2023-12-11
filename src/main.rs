@@ -1,6 +1,16 @@
+use std::fs::File;
+use std::io::Write;
+
 use clap::{Arg, ArgAction, Command};
 use spider_crab::error::SpiderError;
 use spider_crab::SpiderCrab;
+
+
+fn save_graph_file(spider_crab: &SpiderCrab, filename: &String) -> Result<(), Box<dyn std::error::Error>> {
+    let mut f = File::create(filename.as_str())?;
+    f.write_all(spider_crab.get_dot_format().as_bytes())?;
+    Ok(())
+}
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
@@ -37,6 +47,13 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 .action(ArgAction::SetTrue)
                 .help("Print more log messages."),
         )
+        .arg(
+            Arg::new("dot")
+            .short('o')
+            .long("dot")
+            .action(ArgAction::Set)
+            .help("Save output to file in graphiz Dot format.")
+        )
         .get_matches();
 
     let url_str = matches
@@ -48,6 +65,8 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     let quiet: bool = matches.get_flag("quiet");
     let verbose: bool = matches.get_flag("verbose");
+
+    let dot_output_file = matches.get_one::<String>("dot");
 
     let mut spider_crab = SpiderCrab::default();
     spider_crab.options.add_host(url_str);
@@ -72,6 +91,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         if !quiet {
             println!("All links good!");
         }
+        if dot_output_file.is_some() {
+            save_graph_file(&spider_crab, dot_output_file.unwrap());
+        }
         return Ok(());
     } else {
         if !quiet {
@@ -88,6 +110,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             target_page: None,
             html: None,
         }) as Box<dyn std::error::Error>;
+        if dot_output_file.is_some() {
+            save_graph_file(&spider_crab, dot_output_file.unwrap());
+        }
         return Err(e);
     }
 }
