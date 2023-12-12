@@ -7,9 +7,9 @@ use spider_crab::SpiderCrab;
 
 fn save_graph_file(
     spider_crab: &SpiderCrab,
-    filename: &String,
+    filename: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut f = File::create(filename.as_str())?;
+    let mut f = File::create(filename)?;
     f.write_all(spider_crab.get_dot_format().as_bytes())?;
     Ok(())
 }
@@ -94,7 +94,10 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             println!("All links good!");
         }
         if dot_output_file.is_some() {
-            save_graph_file(&spider_crab, dot_output_file.unwrap());
+            let save_result = save_graph_file(&spider_crab, dot_output_file.unwrap());
+            if save_result.is_err() {
+                return Err(save_result.err().unwrap());
+            }
         }
         return Ok(());
     } else {
@@ -113,7 +116,14 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             html: None,
         }) as Box<dyn std::error::Error>;
         if dot_output_file.is_some() {
-            save_graph_file(&spider_crab, dot_output_file.unwrap());
+            let save_result = save_graph_file(&spider_crab, dot_output_file.unwrap());
+            if save_result.is_err() {
+                eprintln!(
+                    "Save to Dot output file {} failed!",
+                    dot_output_file.unwrap()
+                );
+                eprintln!("Error: {:?}", save_result.err().unwrap());
+            }
         }
         return Err(e);
     }

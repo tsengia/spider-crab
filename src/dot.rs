@@ -3,14 +3,14 @@ use crate::{Link, Page, PageGraph, SpiderCrab};
 use petgraph::dot::{Config, Dot};
 use petgraph::graph::NodeIndex;
 
-fn get_link_dot_attributes<'a>(
-    graph: &'a PageGraph,
-    edge_ref: petgraph::graph::EdgeReference<'_, Link>,
+fn get_link_dot_attributes(
+    _graph: &PageGraph,
+    _edge_ref: petgraph::graph::EdgeReference<'_, Link>,
 ) -> String {
     "".to_string()
 }
 
-fn get_page_dot_attributes<'a>(graph: &'a PageGraph, (index, page): (NodeIndex, &Page)) -> String {
+fn get_page_dot_attributes(_graph: &PageGraph, (_index, page): (NodeIndex, &Page)) -> String {
     let title: String = match (page.checked, page.title.clone()) {
         (false, _) => "???".to_string(),
         (true, None) => "NO TITLE".to_string(),
@@ -23,12 +23,12 @@ fn get_page_dot_attributes<'a>(graph: &'a PageGraph, (index, page): (NodeIndex, 
         (true, None) => "orange",
     };
 
-    return format!(
+    format!(
         "label=\"{}\n{}\", color={}",
         title,
         page.url.as_str(),
         color
-    );
+    )
 }
 
 impl SpiderCrab {
