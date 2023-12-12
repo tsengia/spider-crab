@@ -7,8 +7,8 @@ use std::sync::Mutex;
 use url::{Host, Url};
 
 pub mod algo;
-pub mod error;
 pub mod dot;
+pub mod error;
 pub mod url_helpers;
 
 #[cfg(test)]

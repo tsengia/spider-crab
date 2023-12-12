@@ -5,8 +5,10 @@ use clap::{Arg, ArgAction, Command};
 use spider_crab::error::SpiderError;
 use spider_crab::SpiderCrab;
 
-
-fn save_graph_file(spider_crab: &SpiderCrab, filename: &String) -> Result<(), Box<dyn std::error::Error>> {
+fn save_graph_file(
+    spider_crab: &SpiderCrab,
+    filename: &String,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut f = File::create(filename.as_str())?;
     f.write_all(spider_crab.get_dot_format().as_bytes())?;
     Ok(())
@@ -49,10 +51,10 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         )
         .arg(
             Arg::new("dot")
-            .short('o')
-            .long("dot")
-            .action(ArgAction::Set)
-            .help("Save output to file in graphiz Dot format.")
+                .short('o')
+                .long("dot")
+                .action(ArgAction::Set)
+                .help("Save output to file in graphiz Dot format."),
         )
         .get_matches();
 
