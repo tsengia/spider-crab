@@ -88,7 +88,6 @@ async fn test_two_pages() {
     assert_eq!(map.len(), 2);
 }
 
-
 #[tokio::test]
 async fn test_missing_page() {
     let mut server = Server::new();
@@ -102,9 +101,7 @@ async fn test_missing_page() {
       .with_body("<!DOCTYPE html><html><body><a href=\"page2.html\" >This points to a missing page!</a></body></html>")
       .create();
 
-    let missing_page_mock = server.mock("GET", "/page2.html")
-      .with_status(404)
-      .create();
+    let missing_page_mock = server.mock("GET", "/page2.html").with_status(404).create();
 
     let mut spider_crab = SpiderCrab::new(&[url.as_str()]);
 
@@ -134,7 +131,6 @@ async fn test_missing_page() {
     // Make sure there are two pages in the page map
     assert_eq!(map.len(), 2);
 }
-
 
 #[tokio::test]
 async fn test_missing_href() {
@@ -175,7 +171,6 @@ async fn test_missing_href() {
     assert_eq!(map.len(), 1);
 }
 
-
 #[tokio::test]
 async fn test_empty_href() {
     let mut server = Server::new();
@@ -214,7 +209,6 @@ async fn test_empty_href() {
     // Make sure there is only one page in the page map
     assert_eq!(map.len(), 1);
 }
-
 
 #[tokio::test]
 async fn test_empty_href_in_second_page() {
