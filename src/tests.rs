@@ -87,3 +87,51 @@ async fn test_two_pages() {
     // Make sure there are two pages in the page map
     assert_eq!(map.len(), 2);
 }
+
+
+
+#[tokio::test]
+async fn test_missing_page() {
+    let mut server = Server::new();
+
+    let url = server.url();
+    let parsed_url = Url::parse(url.as_str()).unwrap();
+
+    let mock = server.mock("GET", "/")
+      .with_status(201)
+      .with_header("content-type", "text/html")
+      .with_body("<!DOCTYPE html><html><body><a href=\"page2.html\" >This points to a missing page!</a></body></html>")
+      .create();
+
+    let missing_page_mock = server.mock("GET", "/page2.html")
+      .with_status(404)
+      .create();
+
+    let mut spider_crab = SpiderCrab::new(&[url.as_str()]);
+
+    let success = spider_crab.visit_website(url.as_str()).await;
+
+    // Make sure the HTTP request was made to the first page
+    mock.assert();
+
+    // Make sure the HTTP request was made to the missing page
+    missing_page_mock.assert();
+
+    // Make sure that visit _website() returned true
+    assert!(!success);
+
+    let graph = &spider_crab.graph;
+    // Make sure that the page graph contains two pages
+    assert_eq!(graph.node_count(), 2);
+
+    // Make sure there is only one link in the page graph
+    assert_eq!(graph.edge_count(), 1);
+
+    let map = &spider_crab.map;
+
+    // Make sure that the page map contains the mock page
+    assert!(map.contains_key(&parsed_url));
+
+    // Make sure there are two pages in the page map
+    assert_eq!(map.len(), 2);
+}
