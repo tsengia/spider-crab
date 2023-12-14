@@ -1,5 +1,5 @@
 use error::SpiderError;
-use log::{error, info, warn};
+
 use petgraph::graph::{DiGraph, NodeIndex};
 use reqwest::StatusCode;
 use scraper::{selector::CssLocalName, Selector};

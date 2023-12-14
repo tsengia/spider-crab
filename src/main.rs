@@ -1,7 +1,6 @@
-use log::{error, info, warn};
+use log::{error, info};
 use std::fs::File;
 use std::io::Write;
-use stderrlog;
 
 use clap::{Arg, ArgAction, Command};
 use spider_crab::error::SpiderError;
