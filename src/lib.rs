@@ -160,12 +160,12 @@ impl SpiderCrab {
     }
 
     pub fn is_page_good(&self, url: &Url) -> bool {
-        self.get_page(url).good.unwrap_or(false) && self.get_page(url).errors.len() == 0
+        self.get_page(url).good.unwrap_or(false) && self.get_page(url).errors.is_empty()
     }
 
     pub fn is_page_good_by_str(&self, url: &str) -> bool {
         let url = Url::parse(url).unwrap();
-        self.get_page(&url).good.unwrap_or(false) && self.get_page(&url).errors.len() == 0
+        self.get_page(&url).good.unwrap_or(false) && self.get_page(&url).errors.is_empty()
     }
 
     pub fn page_count(&self) -> usize {

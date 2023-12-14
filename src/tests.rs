@@ -1,8 +1,8 @@
 use mockito::Server;
 use url::Url;
 
-use crate::SpiderCrab;
 use crate::Page;
+use crate::SpiderCrab;
 
 #[tokio::test]
 async fn test_simple_page() {
@@ -37,7 +37,15 @@ async fn test_simple_page() {
     assert!(spider_crab.contains_page(&parsed_url));
 
     // Make sure that the title is set
-    assert_eq!(spider_crab.get_page(&parsed_url).title.as_ref().unwrap().as_str(), "Example Title");
+    assert_eq!(
+        spider_crab
+            .get_page(&parsed_url)
+            .title
+            .as_ref()
+            .unwrap()
+            .as_str(),
+        "Example Title"
+    );
 }
 
 #[tokio::test]
@@ -80,7 +88,6 @@ async fn test_two_pages() {
     assert!(spider_crab.contains_page(&parsed_url));
 }
 
-
 #[tokio::test]
 async fn test_helper_functions() {
     let mut server = Server::new();
@@ -105,13 +112,22 @@ async fn test_helper_functions() {
     mock.assert();
 
     // Make sure that these two functions are equivalent
-    assert_eq!(spider_crab.get_page(&parsed_url) as *const Page, spider_crab.get_page_by_str(url.as_str()) as *const Page);
-    
+    assert_eq!(
+        spider_crab.get_page(&parsed_url) as *const Page,
+        spider_crab.get_page_by_str(url.as_str()) as *const Page
+    );
+
     // Make sure that these two functions are equivalent
-    assert_eq!(spider_crab.contains_page(&parsed_url), spider_crab.contains_page_by_str(url.as_str()));
-    
+    assert_eq!(
+        spider_crab.contains_page(&parsed_url),
+        spider_crab.contains_page_by_str(url.as_str())
+    );
+
     // Make sure that these two functions are equivalent
-    assert_eq!(spider_crab.is_page_good(&parsed_url), spider_crab.is_page_good_by_str(url.as_str()));
+    assert_eq!(
+        spider_crab.is_page_good(&parsed_url),
+        spider_crab.is_page_good_by_str(url.as_str())
+    );
 }
 
 #[tokio::test]
@@ -259,7 +275,6 @@ async fn test_empty_href_in_second_page() {
     assert!(spider_crab.contains_page(&parsed_url.join("pageB.html").unwrap()));
 }
 
-
 #[tokio::test]
 async fn test_non_html_content_type() {
     let mut server = Server::new();
@@ -273,11 +288,12 @@ async fn test_non_html_content_type() {
       .with_body("<!DOCTYPE html><html><body><a href=\"pageB.html\">This is a link to page B.</a></body></html>")
       .create();
 
-    let mock_page_b = server.mock("GET", "/pageB.html")
-      .with_status(201)
-      .with_header("content-type", "application/javascript")
-      .with_body("alert(\"Hello world!\");")
-      .create();
+    let mock_page_b = server
+        .mock("GET", "/pageB.html")
+        .with_status(201)
+        .with_header("content-type", "application/javascript")
+        .with_body("alert(\"Hello world!\");")
+        .create();
 
     let mut spider_crab = SpiderCrab::new(&[url.as_str()]);
 
@@ -305,24 +321,26 @@ async fn test_non_html_content_type() {
 
     // Check the root page
     {
-      // Make sure that the root page's content type is correct
-      let page_a_weight: &crate::Page = spider_crab.get_page(&parsed_url);
-      assert_eq!(page_a_weight.content_type.as_ref().unwrap(), "text/html");
-      assert!(page_a_weight.checked);
-      assert_eq!(page_a_weight.status_code.unwrap(), 201);
-      assert_eq!(page_a_weight.errors.len(), 0);
+        // Make sure that the root page's content type is correct
+        let page_a_weight: &crate::Page = spider_crab.get_page(&parsed_url);
+        assert_eq!(page_a_weight.content_type.as_ref().unwrap(), "text/html");
+        assert!(page_a_weight.checked);
+        assert_eq!(page_a_weight.status_code.unwrap(), 201);
+        assert_eq!(page_a_weight.errors.len(), 0);
     }
 
     {
-      // Make sure that page B's content type is correct
-      let page_b_weight = spider_crab.get_page(&parsed_url.join("/pageB.html").unwrap());
-      assert_eq!(page_b_weight.content_type.as_ref().unwrap(), "application/javascript");
-      assert!(page_b_weight.checked);
-      assert_eq!(page_b_weight.status_code.unwrap(), 201);
-      assert_eq!(page_b_weight.errors.len(), 0);
+        // Make sure that page B's content type is correct
+        let page_b_weight = spider_crab.get_page(&parsed_url.join("/pageB.html").unwrap());
+        assert_eq!(
+            page_b_weight.content_type.as_ref().unwrap(),
+            "application/javascript"
+        );
+        assert!(page_b_weight.checked);
+        assert_eq!(page_b_weight.status_code.unwrap(), 201);
+        assert_eq!(page_b_weight.errors.len(), 0);
     }
 }
-
 
 #[tokio::test]
 async fn test_empty_content_type() {
@@ -337,10 +355,11 @@ async fn test_empty_content_type() {
       .with_body("<!DOCTYPE html><html><body><a href=\"pageB.html\">This is a link to page B.</a></body></html>")
       .create();
 
-    let mock_page_b = server.mock("GET", "/pageB.html")
-      .with_status(201)
-      .with_body("alert(\"Hello world!\");")
-      .create();
+    let mock_page_b = server
+        .mock("GET", "/pageB.html")
+        .with_status(201)
+        .with_body("alert(\"Hello world!\");")
+        .create();
 
     let mut spider_crab = SpiderCrab::new(&[url.as_str()]);
 
@@ -368,21 +387,21 @@ async fn test_empty_content_type() {
 
     // Check the root page
     {
-      // Make sure that the root page's content type is correct
-      let page_a_weight: &crate::Page = spider_crab.get_page(&parsed_url);
-      assert_eq!(page_a_weight.content_type.as_ref().unwrap(), "text/html");
-      assert!(page_a_weight.checked);
-      assert_eq!(page_a_weight.status_code.unwrap(), 201);
-      assert_eq!(page_a_weight.errors.len(), 0);
+        // Make sure that the root page's content type is correct
+        let page_a_weight: &crate::Page = spider_crab.get_page(&parsed_url);
+        assert_eq!(page_a_weight.content_type.as_ref().unwrap(), "text/html");
+        assert!(page_a_weight.checked);
+        assert_eq!(page_a_weight.status_code.unwrap(), 201);
+        assert_eq!(page_a_weight.errors.len(), 0);
     }
 
     {
-      // Make sure that page B's content type is correct
-      let page_b_weight = spider_crab.get_page(&parsed_url.join("/pageB.html").unwrap());
-      assert!(page_b_weight.content_type.is_none());
-      assert!(page_b_weight.checked);
-      assert_eq!(page_b_weight.status_code.unwrap(), 201);
-      assert_eq!(page_b_weight.errors.len(), 0);
+        // Make sure that page B's content type is correct
+        let page_b_weight = spider_crab.get_page(&parsed_url.join("/pageB.html").unwrap());
+        assert!(page_b_weight.content_type.is_none());
+        assert!(page_b_weight.checked);
+        assert_eq!(page_b_weight.status_code.unwrap(), 201);
+        assert_eq!(page_b_weight.errors.len(), 0);
     }
 }
 
@@ -432,11 +451,11 @@ async fn test_skip_link_class() {
 
     // Check the root page
     {
-      // Make sure that the root page is correct
-      let page_a_weight: &crate::Page = spider_crab.get_page(&parsed_url);
-      assert_eq!(page_a_weight.content_type.as_ref().unwrap(), "text/html");
-      assert!(page_a_weight.checked);
-      assert_eq!(page_a_weight.status_code.unwrap(), 201);
-      assert_eq!(page_a_weight.errors.len(), 0);
+        // Make sure that the root page is correct
+        let page_a_weight: &crate::Page = spider_crab.get_page(&parsed_url);
+        assert_eq!(page_a_weight.content_type.as_ref().unwrap(), "text/html");
+        assert!(page_a_weight.checked);
+        assert_eq!(page_a_weight.status_code.unwrap(), 201);
+        assert_eq!(page_a_weight.errors.len(), 0);
     }
 }
