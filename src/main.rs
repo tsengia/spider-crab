@@ -86,9 +86,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     let result = spider_crab.visit_website(url_str).await;
 
-    info!("Discovered {} pages", spider_crab.graph.node_count());
+    info!("Discovered {} pages", spider_crab.page_count());
     info!("Visited {} pages", spider_crab.map.len());
-    info!("Discovered {} links", spider_crab.graph.edge_count());
+    info!("Discovered {} links", spider_crab.link_count());
 
     if result {
         info!("All links good!");
