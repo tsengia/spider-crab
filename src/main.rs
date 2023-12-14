@@ -38,14 +38,13 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::new("quiet")
                 .short('q')
-                .action(ArgAction::Append)
-                .help("Increase message verbosity"),
+                .action(ArgAction::SetTrue)
+                .help("Silence logging output."),
         )
         .arg(
             Arg::new("verbosity")
                 .short('v')
-                .long("verbose")
-                .action(ArgAction::SetTrue)
+                .action(ArgAction::Count)
                 .help("Print more log messages."),
         )
         .arg(
@@ -64,17 +63,14 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     let depth: i32 = *matches.get_one::<i32>("depth").expect("Invalid depth!");
 
-    let verbose: usize = matches
-        .get_occurrences::<usize>("verbosity")
-        .unwrap()
-        .count();
+    let verbose = matches.get_count("verbosity");
 
     let dot_output_file = matches.get_one::<String>("dot");
 
     stderrlog::new()
         .module(module_path!())
         .quiet(matches.get_flag("quiet"))
-        .verbosity(verbose)
+        .verbosity(verbose as usize)
         .init()
         .unwrap();
 
