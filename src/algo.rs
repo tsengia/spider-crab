@@ -91,6 +91,11 @@ pub async fn visit_page(
 
             // Record the HTTP status code
             page.status_code = Some(response.status());
+            if !response.status().is_success() {
+                println!("Found bad link! {}", url);
+                page.good = Some(false);
+                return false;
+            }
 
             // Attempt to get the Content-Type of the page
             let (parse_html, content_type) = check_content_type(&response);
