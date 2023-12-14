@@ -13,7 +13,7 @@ pub struct SpiderError {
 #[derive(Debug)]
 pub enum SpiderErrorType {
     InvalidURL,
-    MissingPage,
+    HTTPError,
     UnableToRetrieve,
     MissingHref,
     EmptyHref,
@@ -33,12 +33,13 @@ impl std::fmt::Display for SpiderError {
 impl SpiderError {
     fn get_message(&self) -> String {
         match &self.error_type {
-            SpiderErrorType::MissingPage => format!(
-                "Page at {:?} does not exist!",
-                self.target_page.as_ref().unwrap()
-            ),
             SpiderErrorType::UnableToRetrieve => format!(
                 "Failed to retrieve content for page {:?}!",
+                self.target_page.as_ref().unwrap()
+            ),
+            SpiderErrorType::HTTPError => format!(
+                "HTTP GET request received status code {:?} for page {:?}!",
+                self.http_error_code.as_ref().unwrap(),
                 self.target_page.as_ref().unwrap()
             ),
             SpiderErrorType::InvalidURL => format!(
