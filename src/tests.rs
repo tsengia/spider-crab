@@ -249,8 +249,8 @@ async fn test_empty_content_type() {
     mock.assert();
     mock_page_b.assert();
 
-    // Make sure that visit _website() returned false
-    assert!(!success);
+    // Make sure that visit _website() returned true
+    assert!(success);
 
     // Make sure that the page graph contains two pages
     assert_eq!(spider_crab.page_count(), 2);
