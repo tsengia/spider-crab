@@ -1,3 +1,4 @@
+use log::{error, info};
 use std::fs::File;
 use std::io::Write;
 
@@ -17,7 +18,6 @@ fn save_graph_file(
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let matches = Command::new("Spider Crab")
-        .version("0.0.1")
         .about("Checks links and images in a webpage.")
         .author("Tyler Sengia")
         .arg(
@@ -38,15 +38,13 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::new("quiet")
                 .short('q')
-                .long("quiet")
                 .action(ArgAction::SetTrue)
-                .help("Do not print to STDOUT or STDERR."),
+                .help("Silence logging output."),
         )
         .arg(
-            Arg::new("verbose")
+            Arg::new("verbosity")
                 .short('v')
-                .long("verbose")
-                .action(ArgAction::SetTrue)
+                .action(ArgAction::Count)
                 .help("Print more log messages."),
         )
         .arg(
@@ -65,16 +63,21 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     let depth: i32 = *matches.get_one::<i32>("depth").expect("Invalid depth!");
 
-    let quiet: bool = matches.get_flag("quiet");
-    let verbose: bool = matches.get_flag("verbose");
+    let verbose = matches.get_count("verbosity");
 
     let dot_output_file = matches.get_one::<String>("dot");
+
+    stderrlog::new()
+        .module(module_path!())
+        .quiet(matches.get_flag("quiet"))
+        .verbosity(verbose as usize)
+        .init()
+        .unwrap();
 
     let mut spider_crab = SpiderCrab::default();
     spider_crab.options.add_host(url_str);
 
     spider_crab.options.max_depth = depth;
-    spider_crab.options.verbose = verbose;
 
     const EXPECTED_PAGES: usize = 50;
     spider_crab.graph.reserve_edges(200);
@@ -83,16 +86,12 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     let result = spider_crab.visit_website(url_str).await;
 
-    if !quiet {
-        println!("Discovered {} pages", spider_crab.graph.node_count());
-        println!("Visited {} pages", spider_crab.map.len());
-        println!("Discovered {} links", spider_crab.graph.edge_count());
-    }
+    info!("Discovered {} pages", spider_crab.graph.node_count());
+    info!("Visited {} pages", spider_crab.map.len());
+    info!("Discovered {} links", spider_crab.graph.edge_count());
 
     if result {
-        if !quiet {
-            println!("All links good!");
-        }
+        info!("All links good!");
         if dot_output_file.is_some() {
             let save_result = save_graph_file(&spider_crab, dot_output_file.unwrap());
             if save_result.is_err() {
@@ -101,13 +100,12 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         }
         return Ok(());
     } else {
-        if !quiet {
-            for page in spider_crab.graph.node_weights() {
-                for error in &page.errors {
-                    println!("{}", error);
-                }
+        for page in spider_crab.graph.node_weights() {
+            for error in &page.errors {
+                error!("{}", error);
             }
         }
+
         let e = Box::new(SpiderError {
             error_type: spider_crab::error::SpiderErrorType::FailedCrawl,
             source_page: None,
@@ -118,11 +116,11 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         if dot_output_file.is_some() {
             let save_result = save_graph_file(&spider_crab, dot_output_file.unwrap());
             if save_result.is_err() {
-                eprintln!(
+                error!(
                     "Save to Dot output file {} failed!",
                     dot_output_file.unwrap()
                 );
-                eprintln!("Error: {:?}", save_result.err().unwrap());
+                error!("Error: {:?}", save_result.err().unwrap());
             }
         }
         return Err(e);

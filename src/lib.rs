@@ -1,4 +1,5 @@
 use error::SpiderError;
+
 use petgraph::graph::{DiGraph, NodeIndex};
 use reqwest::StatusCode;
 use scraper::{selector::CssLocalName, Selector};
@@ -69,10 +70,6 @@ pub struct SpiderOptions {
     pub link_selector: Box<Selector>,
     /// Scraper CSS Selector for title elements
     pub title_selector: Box<Selector>,
-    /// Flag to enable quiet mode. True if quiet mode enabled.
-    pub quiet: bool,
-    /// Flag to enable verbose mode. True if verbose mode enabled.
-    pub verbose: bool,
     /// Name of the CSS class that marks elements to not check URLs for
     pub skip_class: CssLocalName,
     /// Vector of hosts (domain names and IP addresses) that Spider Crab will traverse
@@ -104,11 +101,6 @@ impl Default for SpiderOptions {
             max_depth: -1,
             link_selector: Box::new(Selector::parse("a").expect("Invalid title selector!")),
             title_selector: Box::new(Selector::parse("title").expect("Invalid title selector!")),
-            quiet: false,
-            #[cfg(test)]
-            verbose: true,
-            #[cfg(not(test))]
-            verbose: false,
             skip_class: CssLocalName::from("scrab-skip"),
             hosts: vec![],
         }

@@ -1,12 +1,14 @@
 //! Holds algorithm(s) used to traverse across a website
 
 use async_recursion::async_recursion;
+use log::{error, info, warn};
 use petgraph::graph::NodeIndex;
 use reqwest::{Client, Response};
 use scraper::{Element, Html};
 use std::sync::Mutex;
 use url::Url;
 
+use crate::error::{SpiderError, SpiderErrorType};
 use crate::url_helpers::{check_host, get_url_from_element};
 use crate::{Link, Page, PageGraph, PageMap, SpiderOptions};
 
@@ -80,11 +82,15 @@ pub async fn visit_page(
 
             page.checked = true;
             if response_result.is_err() {
-                if options.verbose {
-                    println!("Found bad link! {}", url);
-                }
                 page.status_code = response_result.err().unwrap().status();
                 page.good = Some(false);
+                page.errors.push(SpiderError {
+                    html: None,
+                    source_page: None,
+                    target_page: Some(url.to_string()),
+                    http_error_code: None,
+                    error_type: SpiderErrorType::UnableToRetrieve,
+                });
                 return false;
             }
 
@@ -93,8 +99,14 @@ pub async fn visit_page(
             // Record the HTTP status code
             page.status_code = Some(response.status());
             if !response.status().is_success() {
-                println!("Found bad link! {}", url);
                 page.good = Some(false);
+                page.errors.push(SpiderError {
+                    html: None,
+                    source_page: None,
+                    target_page: Some(url.to_string()),
+                    http_error_code: Some(response.status().as_u16()),
+                    error_type: SpiderErrorType::HTTPError,
+                });
                 return false;
             }
 
@@ -104,12 +116,10 @@ pub async fn visit_page(
 
             // If Content-Type is not HTML, then don't try to parse the HTML
             if !parse_html {
-                if options.verbose {
-                    println!(
-                        "Not parsing HTML for: {}, Content-Type is {:?}",
-                        url, content_type
-                    );
-                }
+                warn!(
+                    "Not parsing HTML for: {}, Content-Type is {:?}",
+                    url, content_type
+                );
                 return true;
             }
 
@@ -117,9 +127,7 @@ pub async fn visit_page(
             let parse_html = check_host(&options.hosts, &url);
 
             if !parse_html {
-                if options.verbose {
-                    println!("Not parsing HTML for: {}, outside of domain", url);
-                }
+                info!("Not parsing HTML for: {}, outside of domain", url);
                 return true;
             }
         }
@@ -133,9 +141,7 @@ pub async fn visit_page(
             let page = graph.node_weight_mut(node_index).unwrap();
             if contents.is_err() {
                 page.good = Some(false);
-                if options.verbose {
-                    println!("Failed to get contents of page! {}", url);
-                }
+                error!("Failed to get contents of page! {}", url);
                 return false;
             }
         }
@@ -152,9 +158,7 @@ pub async fn visit_page(
             }
         }
 
-        if options.verbose {
-            println!("Visited page {}", url.as_str());
-        }
+        info!("Visited page {}", url.as_str());
 
         let links = html.select(options.link_selector.as_ref());
 
@@ -169,9 +173,8 @@ pub async fn visit_page(
             // Parse out a URL from the link
             let next_url = get_url_from_element(l, &url);
             if next_url.is_err() {
-                if options.verbose {
-                    println!("Failed to get URL from element: {}", l.html());
-                }
+                error!("Failed to get URL from element: {}", l.html());
+
                 found_problem = true;
                 {
                     let page = graph.node_weight_mut(node_index).unwrap();
