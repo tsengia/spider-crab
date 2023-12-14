@@ -8,6 +8,7 @@ use scraper::{Element, Html};
 use std::sync::Mutex;
 use url::Url;
 
+use crate::error::{SpiderError, SpiderErrorType};
 use crate::url_helpers::{check_host, get_url_from_element};
 use crate::{Link, Page, PageGraph, PageMap, SpiderOptions};
 
@@ -81,9 +82,15 @@ pub async fn visit_page(
 
             page.checked = true;
             if response_result.is_err() {
-                error!("Found bad link! {}", url);
                 page.status_code = response_result.err().unwrap().status();
                 page.good = Some(false);
+                page.errors.push(SpiderError {
+                    html: None,
+                    source_page: None,
+                    target_page: Some(url.to_string()),
+                    http_error_code: None,
+                    error_type: SpiderErrorType::UnableToRetrieve,
+                });
                 return false;
             }
 
@@ -92,8 +99,14 @@ pub async fn visit_page(
             // Record the HTTP status code
             page.status_code = Some(response.status());
             if !response.status().is_success() {
-                println!("Found bad link! {}", url);
                 page.good = Some(false);
+                page.errors.push(SpiderError {
+                    html: None,
+                    source_page: None,
+                    target_page: Some(url.to_string()),
+                    http_error_code: Some(response.status().as_u16()),
+                    error_type: SpiderErrorType::HTTPError,
+                });
                 return false;
             }
 
