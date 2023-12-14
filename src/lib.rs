@@ -139,4 +139,40 @@ impl SpiderCrab {
         let graph_mutex = Mutex::<&mut PageGraph>::new(&mut self.graph);
         algo::visit_root_page(&url, &self.client, &self.options, &graph_mutex, &map_mutex).await
     }
+
+    pub fn get_page(&self, url: &Url) -> &Page {
+        let node_id = *self.map.get(url).unwrap();
+        return self.graph.node_weight(node_id).unwrap();
+    }
+
+    pub fn get_page_by_str(&self, url: &str) -> &Page {
+        let url = Url::parse(url).unwrap();
+        let node_id = *self.map.get(&url).unwrap();
+        return self.graph.node_weight(node_id).unwrap();
+    }
+
+    pub fn contains_page(&self, url: &Url) -> bool {
+        self.map.contains_key(url)
+    }
+
+    pub fn contains_page_by_str(&self, url: &str) -> bool {
+        self.map.contains_key(&Url::parse(url).unwrap())
+    }
+
+    pub fn is_page_good(&self, url: &Url) -> bool {
+        self.get_page(url).good.unwrap_or(false) && self.get_page(url).errors.is_empty()
+    }
+
+    pub fn is_page_good_by_str(&self, url: &str) -> bool {
+        let url = Url::parse(url).unwrap();
+        self.get_page(&url).good.unwrap_or(false) && self.get_page(&url).errors.is_empty()
+    }
+
+    pub fn page_count(&self) -> usize {
+        self.graph.node_count()
+    }
+
+    pub fn link_count(&self) -> usize {
+        self.graph.edge_count()
+    }
 }
