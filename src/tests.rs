@@ -2,6 +2,7 @@ use mockito::Server;
 use url::Url;
 
 use crate::SpiderCrab;
+use crate::Page;
 
 #[tokio::test]
 async fn test_simple_page() {
@@ -77,6 +78,40 @@ async fn test_two_pages() {
 
     // Make sure that the page map contains the home page
     assert!(spider_crab.contains_page(&parsed_url));
+}
+
+
+#[tokio::test]
+async fn test_helper_functions() {
+    let mut server = Server::new();
+
+    let url = server.url();
+    let parsed_url = Url::parse(url.as_str()).unwrap();
+
+    let mock = server.mock("GET", "/")
+      .with_status(201)
+      .with_header("content-type", "text/html")
+      .with_body("<!DOCTYPE html><html><head><title>Example Title</title></head><body><a href=\"https://example.com\" >Example Link</a></body></html>")
+      .create();
+
+    let mut spider_crab = SpiderCrab::new(&[url.as_str()]);
+
+    let success = spider_crab.visit_website(url.as_str()).await;
+
+    // Make sure that visit _website() returned true
+    assert!(success);
+
+    // Make sure the HTTP request was made
+    mock.assert();
+
+    // Make sure that these two functions are equivalent
+    assert_eq!(spider_crab.get_page(&parsed_url) as *const Page, spider_crab.get_page_by_str(url.as_str()) as *const Page);
+    
+    // Make sure that these two functions are equivalent
+    assert_eq!(spider_crab.contains_page(&parsed_url), spider_crab.contains_page_by_str(url.as_str()));
+    
+    // Make sure that these two functions are equivalent
+    assert_eq!(spider_crab.is_page_good(&parsed_url), spider_crab.is_page_good_by_str(url.as_str()));
 }
 
 #[tokio::test]
