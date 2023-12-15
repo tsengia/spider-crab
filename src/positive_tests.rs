@@ -1,5 +1,4 @@
 ///! Tests that are for the "positive" case (ie. no errors, normal execution)
-
 use mockito::Server;
 use url::Url;
 
