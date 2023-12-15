@@ -8,6 +8,7 @@ pub struct SpiderError {
     pub http_error_code: Option<u16>,
     pub error_type: SpiderErrorType,
     pub html: Option<String>,
+    pub attribute: Option<String>,
 }
 
 #[derive(Debug)]
@@ -15,8 +16,8 @@ pub enum SpiderErrorType {
     InvalidURL,
     HTTPError,
     UnableToRetrieve,
-    MissingHref,
-    EmptyHref,
+    MissingAttribute,
+    EmptyAttribute,
     MissingTitle,
     FailedCrawl,
 }
@@ -27,6 +28,19 @@ impl std::fmt::Display for SpiderError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let message = self.get_message();
         write!(f, "SpiderError ({:?}): {}", self.error_type, message)
+    }
+}
+
+impl Default for SpiderError {
+    fn default() -> Self {
+        Self {
+            error_type: SpiderErrorType::FailedCrawl,
+            source_page: None,
+            target_page: None,
+            http_error_code: None,
+            html: None,
+            attribute: None,
+        }
     }
 }
 
@@ -43,18 +57,20 @@ impl SpiderError {
                 self.target_page.as_ref().unwrap()
             ),
             SpiderErrorType::InvalidURL => format!(
-                "Page at {:?} contains a link with an invalid URL {:?}!",
+                "Page at {:?} contains a reference to an invalid URL {:?}!",
                 self.source_page.as_ref().unwrap(),
                 self.target_page.as_ref().unwrap()
             ),
-            SpiderErrorType::MissingHref => format!(
-                "Page at {:?} contains a link with no href attribute! Element is: {:?}",
+            SpiderErrorType::MissingAttribute => format!(
+                "Page at {:?} contains an element with no {:?} attribute! Element is: {:?}",
                 self.source_page.as_ref().unwrap(),
+                self.attribute.as_ref().unwrap(),
                 self.html.as_ref().unwrap()
             ),
-            SpiderErrorType::EmptyHref => format!(
-                "Page at {:?} contains a link with an empty href attribute! Element is: {:?}",
+            SpiderErrorType::EmptyAttribute => format!(
+                "Page at {:?} contains a link with an empty {:?} attribute! Element is: {:?}",
                 self.source_page.as_ref().unwrap(),
+                self.attribute.as_ref().unwrap(),
                 self.html.as_ref().unwrap()
             ),
             SpiderErrorType::MissingTitle => format!(
