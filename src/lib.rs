@@ -13,7 +13,10 @@ pub mod error;
 pub mod url_helpers;
 
 #[cfg(test)]
-pub mod tests;
+pub mod positive_tests;
+
+#[cfg(test)]
+pub mod negative_tests;
 
 #[derive(Debug)]
 pub struct Link {
