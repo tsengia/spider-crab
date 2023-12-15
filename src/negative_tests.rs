@@ -201,7 +201,7 @@ async fn test_empty_content_type() {
         assert_eq!(page_a_weight.content_type.as_ref().unwrap(), "text/html");
         assert!(page_a_weight.checked);
         assert_eq!(page_a_weight.status_code.unwrap(), 201);
-        assert_eq!(page_a_weight.errors.len(), 0);
+        assert!(page_a_weight.errors.is_empty());
     }
 
     {
@@ -210,6 +210,6 @@ async fn test_empty_content_type() {
         assert!(page_b_weight.content_type.is_none());
         assert!(page_b_weight.checked);
         assert_eq!(page_b_weight.status_code.unwrap(), 201);
-        assert_eq!(page_b_weight.errors.len(), 0);
+        assert!(page_b_weight.errors.is_empty());
     }
 }
