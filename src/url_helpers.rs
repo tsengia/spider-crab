@@ -4,9 +4,12 @@ use crate::error::{SpiderError, SpiderErrorType};
 use scraper::ElementRef;
 use url::{Host, ParseError, Url};
 
-/// Attempt to extract and parse a URL from a `<a>` HTML element
-/// Returns `Some(Url)` if extract + parse was successful
-/// Returns `None` if extraction or parsing failed
+/// Attempt to extract and parse a URL from an HTML element depending on the element tag.
+/// `img``, and `script` elements will extract the URL from the `src` attribute
+/// `a`, and `link` elements will extract the URL from the `href` attribute
+/// Returns `Ok(Some(Url))` if extract + parse was successful
+/// Returns `Ok(None)` if element did not have a URL, but it is not required to have one (such as the `script` elemnt)
+/// Returns `Err(SpiderError)` if element did not
 pub fn get_url_from_element(
     element: ElementRef,
     current_url: &Url,
