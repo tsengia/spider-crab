@@ -7,32 +7,43 @@ use url::{Host, ParseError, Url};
 /// Attempt to extract and parse a URL from a `<a>` HTML element
 /// Returns `Some(Url)` if extract + parse was successful
 /// Returns `None` if extraction or parsing failed
-pub fn get_url_from_element(element: ElementRef, current_url: &Url) -> Result<Url, SpiderError> {
-    let href_attribute = element.attr("href");
+pub fn get_url_from_element(
+    element: ElementRef,
+    current_url: &Url,
+) -> Result<Option<Url>, SpiderError> {
+    let (attribute_name, required) = match element.value().name() {
+        "a" | "link" => ("href", true),
+        "script" => ("src", false),
+        "img" => ("src", true),
+        &_ => panic!("Unsupported element type passed to get_url_from_element!"),
+    };
 
-    if href_attribute.is_none() {
-        // Element does not have an href attribute
-        return Err(SpiderError {
-            error_type: SpiderErrorType::MissingHref,
-            source_page: Some(current_url.to_string()),
-            target_page: None,
-            http_error_code: None,
-            html: Some(element.html()),
-        });
+    let attribute = element.attr(attribute_name);
+
+    if attribute.is_none() {
+        if required {
+            // Element does not have the needed attribute to find the source
+            return Err(SpiderError {
+                error_type: SpiderErrorType::MissingAttribute,
+                attribute: Some(attribute_name.to_string()),
+                source_page: Some(current_url.to_string()),
+                html: Some(element.html()),
+                ..Default::default()
+            });
+        }
+        return Ok(None);
     }
 
-    let href_attribute = href_attribute.unwrap();
-
-    let next_url_str = href_attribute;
+    let next_url_str = attribute.unwrap();
 
     if next_url_str.is_empty() {
         // Element's href attribute value is ""
         return Err(SpiderError {
-            error_type: SpiderErrorType::EmptyHref,
+            error_type: SpiderErrorType::EmptyAttribute,
+            attribute: Some(attribute_name.to_string()),
             source_page: Some(current_url.to_string()),
-            target_page: None,
-            http_error_code: None,
             html: Some(element.html()),
+            ..Default::default()
         });
     }
 
@@ -44,12 +55,12 @@ pub fn get_url_from_element(element: ElementRef, current_url: &Url) -> Result<Ur
             error_type: SpiderErrorType::InvalidURL,
             source_page: Some(current_url.to_string()),
             target_page: Some(next_url_str.to_string()),
-            http_error_code: None,
             html: Some(element.html()),
+            ..Default::default()
         });
     }
 
-    Ok(next_url.unwrap())
+    Ok(Some(next_url.unwrap()))
 }
 
 /// Attempts to grab the host from `url` and see if it matches any element listed in `hosts`

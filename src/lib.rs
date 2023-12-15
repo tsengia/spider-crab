@@ -66,9 +66,9 @@ pub struct SpiderOptions {
     /// If set to `0`, then only visits the root node.
     /// Any positive value visits noes that are a distance `max_depth` away from the root node
     pub max_depth: i32,
-    /// Scraper CSS Selector for link elements
-    pub link_selector: Box<Selector>,
-    /// Scraper CSS Selector for title elements
+    /// Scraper CSS Selector used for getting all elements we want to check
+    pub element_selector: Box<Selector>,
+    /// Scraper CSS Selector used for getting the <title> of a page
     pub title_selector: Box<Selector>,
     /// Name of the CSS class that marks elements to not check URLs for
     pub skip_class: CssLocalName,
@@ -99,8 +99,10 @@ impl Default for SpiderOptions {
     fn default() -> Self {
         Self {
             max_depth: -1,
-            link_selector: Box::new(Selector::parse("a").expect("Invalid title selector!")),
-            title_selector: Box::new(Selector::parse("title").expect("Invalid title selector!")),
+            element_selector: Box::new(
+                Selector::parse("a,link,img,script").expect("Invalid selector!"),
+            ),
+            title_selector: Box::new(Selector::parse("title").expect("Invalid <title> selector!")),
             skip_class: CssLocalName::from("scrab-skip"),
             hosts: vec![],
         }
