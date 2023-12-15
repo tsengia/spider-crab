@@ -40,3 +40,39 @@ Example:
 <a href="https://non-existent-website.net" class="scrab-skip my-custom-class" >This link will not be checked by Spider Crab!</a>
 
 ```
+
+## Development
+`spider-crab` uses the default `cargo fmt` formatter and `cargo clippy` linter.
+
+To run the integration tests, run: `cargo test`.
+
+## Code Coverage
+To generate source based code coverage reports, use the following commands:
+
+1. Install `llvm-tools-preview` and `grcov`
+```bash
+rustup component add llvm-tools-preview
+
+cargo install grcov
+```
+2. Clean the build
+```bash
+cargo clean
+```
+3. Run the tests with `RUSTFLAGS` set to create profile files
+```bash
+CARGO_INCREMENTAL=0 RUSTFLAGS='-Cinstrument-coverage' LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw' cargo test
+```
+
+**For Windows users:**
+```batch
+CARGO_INCREMENTAL=0 
+RUSTFLAGS=-C instrument-coverage
+LLVM_PROFILE_FILE=cargo-test-%p-%m.profraw
+cargo test
+```
+
+4. Generate an HTML report file with grcov:
+```bash
+grcov . --binary-path ./target/debug/deps/ -s . -t html --branch --ignore-not-existing --ignore '../*' --ignore "/*" --ignore 'target/*/build/*5ever' -o target/coverage/html
+```
