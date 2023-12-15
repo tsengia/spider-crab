@@ -139,6 +139,11 @@ pub async fn visit_page(
             if contents.is_err() {
                 page.good = Some(false);
                 error!("Failed to get contents of page! {}", url);
+                page.errors.push(SpiderError {
+                    target_page: Some(url.to_string()),
+                    error_type: SpiderErrorType::UnableToRetrieve,
+                    ..Default::default()
+                });
                 return false;
             }
         }
@@ -182,7 +187,7 @@ pub async fn visit_page(
 
             let next_url = next_url.unwrap();
             if next_url.is_none() {
-                // Element did not contain a URL, and it was not required, so skip it
+                // Element did not contain a URL, but it was not required, so skip it
                 continue;
             }
             let next_url = next_url.unwrap();
