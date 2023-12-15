@@ -131,6 +131,7 @@ pub struct SpiderCrab {
 }
 
 impl SpiderCrab {
+    /// Create a new `SpiderCrab` struct with the list of `domain_names` as valid domains to include while traversing links
     pub fn new(domain_names: &[&str]) -> Self {
         Self {
             options: SpiderOptions::new(domain_names),
@@ -138,6 +139,9 @@ impl SpiderCrab {
         }
     }
 
+    /// Begins crawling the website at `url`
+    /// Returns `true` if no errors were found.
+    /// Returns `false` if errors were found.
     pub async fn visit_website(&mut self, url: &str) -> bool {
         let url = Url::parse(url).unwrap();
         let map_mutex = Mutex::<&mut PageMap>::new(&mut self.map);
@@ -145,39 +149,54 @@ impl SpiderCrab {
         algo::visit_root_page(&url, &self.client, &self.options, &graph_mutex, &map_mutex).await
     }
 
+    /// Returns the `Page` in the page map given by `url`
     pub fn get_page(&self, url: &Url) -> &Page {
         let node_id = *self.map.get(url).unwrap();
         return self.graph.node_weight(node_id).unwrap();
     }
 
+    /// Returns the `Page` in the page map given by `url`
     pub fn get_page_by_str(&self, url: &str) -> &Page {
         let url = Url::parse(url).unwrap();
         let node_id = *self.map.get(&url).unwrap();
         return self.graph.node_weight(node_id).unwrap();
     }
 
+    /// Returns `true` if the page map contains the page given by `url`
     pub fn contains_page(&self, url: &Url) -> bool {
         self.map.contains_key(url)
     }
 
+    /// Returns `true` if the page map contains the page given by `url`
     pub fn contains_page_by_str(&self, url: &str) -> bool {
         self.map.contains_key(&Url::parse(url).unwrap())
     }
 
+    /// Returns `true` if the page given by `url` was marked good and has no errors
     pub fn is_page_good(&self, url: &Url) -> bool {
         self.get_page(url).good.unwrap_or(false) && self.get_page(url).errors.is_empty()
     }
 
+    /// Returns `true`` if the page given by `url` was marked good and has no errors
     pub fn is_page_good_by_str(&self, url: &str) -> bool {
         let url = Url::parse(url).unwrap();
         self.get_page(&url).good.unwrap_or(false) && self.get_page(&url).errors.is_empty()
     }
 
+    /// Returns the number of pages in the page graph
     pub fn page_count(&self) -> usize {
         self.graph.node_count()
     }
 
+    /// Returns the number of links in the page graph
     pub fn link_count(&self) -> usize {
         self.graph.edge_count()
+    }
+
+    /// Returns an iterator over all errors found in the page graph.
+    pub fn errors(&self) -> impl Iterator<Item = &SpiderError> {
+        self.graph
+            .node_weights()
+            .flat_map(|node: &Page| node.errors.iter())
     }
 }
