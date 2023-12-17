@@ -16,7 +16,7 @@ async fn test_missing_page() {
     let mock = server.mock("GET", "/")
       .with_status(201)
       .with_header("content-type", "text/html")
-      .with_body("<!DOCTYPE html><html><body><a href=\"page2.html\" >This points to a missing page!</a></body></html>")
+      .with_body(include_str!("test_assets/page1.html"))
       .create();
 
     let missing_page_mock = server.mock("GET", "/page2.html").with_status(404).create();
