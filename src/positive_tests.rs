@@ -169,7 +169,7 @@ async fn test_empty_content_type() {
 
     // Make sure that the page map contains the mock page
     assert!(spider_crab.contains_page(&parsed_url));
-    assert!(spider_crab.contains_page(&parsed_url.join("pageB.html").unwrap()));
+    assert!(spider_crab.contains_page(&parsed_url.join("script.html").unwrap()));
 
     // Make sure there are two pages in the page map
     assert_eq!(spider_crab.map.len(), 2);

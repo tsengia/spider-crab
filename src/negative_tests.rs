@@ -37,8 +37,8 @@ async fn test_missing_page() {
     // Make sure that the page graph contains two pages
     assert_eq!(spider_crab.page_count(), 2);
 
-    // Make sure there is only one link in the page graph
-    assert_eq!(spider_crab.link_count(), 1);
+    // Make sure there is only two links in the page graph
+    assert_eq!(spider_crab.link_count(), 2);
 
     // Make sure that the page map contains the mock page
     assert!(spider_crab.contains_page(&parsed_url));
