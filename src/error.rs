@@ -11,8 +11,7 @@ pub struct SpiderError {
     pub attribute: Option<String>,
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum SpiderErrorType {
     InvalidURL,
     HTTPError,

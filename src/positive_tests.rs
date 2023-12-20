@@ -12,11 +12,12 @@ async fn test_simple_page() {
     let url = server.url();
     let parsed_url = Url::parse(url.as_str()).unwrap();
 
-    let mock = server.mock("GET", "/")
-      .with_status(201)
-      .with_header("content-type", "text/html")
-      .with_body("<!DOCTYPE html><html><head><title>Example Title</title></head><body><a href=\"https://example.com\" >Example Link</a></body></html>")
-      .create();
+    let mock = server
+        .mock("GET", "/")
+        .with_status(201)
+        .with_header("content-type", "text/html")
+        .with_body(include_str!("test_assets/pageA.html"))
+        .create();
 
     let mut spider_crab = SpiderCrab::new(&[url.as_str()]);
 
@@ -45,7 +46,7 @@ async fn test_simple_page() {
             .as_ref()
             .unwrap()
             .as_str(),
-        "Example Title"
+        "Page A"
     );
 }
 
@@ -56,17 +57,19 @@ async fn test_two_pages() {
     let url = server.url();
     let parsed_url = Url::parse(url.as_str()).unwrap();
 
-    let mock1 = server.mock("GET", "/")
-      .with_status(201)
-      .with_header("content-type", "text/html")
-      .with_body("<!DOCTYPE html><html><body><a href=\"page2.html\" >Example Link2</a><a href=\"/\" >Example Link1</a></body></html>")
-      .create();
+    let mock1 = server
+        .mock("GET", "/")
+        .with_status(201)
+        .with_header("content-type", "text/html")
+        .with_body(include_str!("test_assets/page1.html"))
+        .create();
 
-    let mock2 = server.mock("GET", "/page2.html")
-      .with_status(201)
-      .with_header("content-type", "text/html")
-      .with_body("<!DOCTYPE html><html><body><a href=\"page2.html\" >Example Link2</a><a href=\"/\" >Example Link1</a></body></html>")
-      .create();
+    let mock2 = server
+        .mock("GET", "/page2.html")
+        .with_status(201)
+        .with_header("content-type", "text/html")
+        .with_body(include_str!("test_assets/page2.html"))
+        .create();
 
     let mut spider_crab = SpiderCrab::new(&[url.as_str()]);
 
@@ -96,11 +99,12 @@ async fn test_helper_functions() {
     let url = server.url();
     let parsed_url = Url::parse(url.as_str()).unwrap();
 
-    let mock = server.mock("GET", "/")
-      .with_status(201)
-      .with_header("content-type", "text/html")
-      .with_body("<!DOCTYPE html><html><head><title>Example Title</title></head><body><a href=\"https://example.com\" >Example Link</a></body></html>")
-      .create();
+    let mock = server
+        .mock("GET", "/")
+        .with_status(201)
+        .with_header("content-type", "text/html")
+        .with_body(include_str!("test_assets/pageA.html"))
+        .create();
 
     let mut spider_crab = SpiderCrab::new(&[url.as_str()]);
 
@@ -132,17 +136,18 @@ async fn test_helper_functions() {
 }
 
 #[tokio::test]
-async fn test_empty_content_type() {
+async fn test_skip_link_class() {
     let mut server = Server::new();
 
     let url = server.url();
     let parsed_url = Url::parse(url.as_str()).unwrap();
 
-    let mock = server.mock("GET", "/")
-      .with_status(201)
-      .with_header("content-type", "text/html")
-      .with_body("<!DOCTYPE html><html><body><a href=\"pageB.html\">This is a link to page B.</a></body></html>")
-      .create();
+    let mock = server
+        .mock("GET", "/")
+        .with_status(201)
+        .with_header("content-type", "text/html")
+        .with_body(include_str!("test_assets/pageC.html"))
+        .create();
 
     let mock_page_b = server
         .mock("GET", "/pageB.html")

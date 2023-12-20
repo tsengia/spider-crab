@@ -3,8 +3,8 @@
 use mockito::Server;
 use url::Url;
 
-use crate::SpiderCrab;
 use crate::error::SpiderErrorType;
+use crate::SpiderCrab;
 
 #[tokio::test]
 async fn test_missing_page() {
@@ -13,11 +13,12 @@ async fn test_missing_page() {
     let url = server.url();
     let parsed_url = Url::parse(url.as_str()).unwrap();
 
-    let mock = server.mock("GET", "/")
-      .with_status(201)
-      .with_header("content-type", "text/html")
-      .with_body("<!DOCTYPE html><html><body><a href=\"page2.html\" >This points to a missing page!</a></body></html>")
-      .create();
+    let mock = server
+        .mock("GET", "/")
+        .with_status(201)
+        .with_header("content-type", "text/html")
+        .with_body(include_str!("test_assets/page1.html"))
+        .create();
 
     let missing_page_mock = server.mock("GET", "/page2.html").with_status(404).create();
 
@@ -37,8 +38,8 @@ async fn test_missing_page() {
     // Make sure that the page graph contains two pages
     assert_eq!(spider_crab.page_count(), 2);
 
-    // Make sure there is only one link in the page graph
-    assert_eq!(spider_crab.link_count(), 1);
+    // Make sure there is only two links in the page graph
+    assert_eq!(spider_crab.link_count(), 2);
 
     // Make sure that the page map contains the mock page
     assert!(spider_crab.contains_page(&parsed_url));
@@ -255,6 +256,8 @@ async fn test_missing_image() {
     assert!(spider_crab.contains_page(&parsed_url));
 
     // Make sure the we've reported an HTTP error for the missing image
-    assert!(spider_crab.errors().all(|e| e.error_type == SpiderErrorType::HTTPError));
+    assert!(spider_crab
+        .errors()
+        .all(|e| e.error_type == SpiderErrorType::HTTPError));
     assert_eq!(spider_crab.errors().count(), 1);
 }
