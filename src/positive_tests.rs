@@ -179,7 +179,7 @@ async fn test_empty_content_type() {
         // Make sure that the root page's content type is correct
         let page_a_weight: &crate::Page = spider_crab.get_page(&parsed_url);
         assert_eq!(page_a_weight.content_type.as_ref().unwrap(), "text/html");
-        assert!(page_a_weight.checked);
+        assert!(page_a_weight.visited);
         assert_eq!(page_a_weight.status_code.unwrap(), 201);
         assert_eq!(page_a_weight.errors.len(), 0);
     }
@@ -188,7 +188,7 @@ async fn test_empty_content_type() {
         // Make sure that page B's content type is correct
         let page_b_weight = spider_crab.get_page(&parsed_url.join("/pageB.html").unwrap());
         assert!(page_b_weight.content_type.is_none());
-        assert!(page_b_weight.checked);
+        assert!(page_b_weight.visited);
         assert_eq!(page_b_weight.status_code.unwrap(), 201);
         assert_eq!(page_b_weight.errors.len(), 0);
     }
@@ -243,7 +243,7 @@ async fn test_skip_link_class() {
         // Make sure that the root page is correct
         let page_a_weight: &crate::Page = spider_crab.get_page(&parsed_url);
         assert_eq!(page_a_weight.content_type.as_ref().unwrap(), "text/html");
-        assert!(page_a_weight.checked);
+        assert!(page_a_weight.visited);
         assert_eq!(page_a_weight.status_code.unwrap(), 201);
         assert_eq!(page_a_weight.errors.len(), 0);
     }

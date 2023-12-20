@@ -36,7 +36,7 @@ pub struct Page {
     /// True if the page was visited and a 2XX HTTP status code was returned, false otherwise
     pub good: Option<bool>,
     /// True if this page was visited, false otherwise
-    pub checked: bool,
+    pub visited: bool,
     /// URL that this page is represented by. Does not include URL parameters or fragments
     pub url: Url,
     /// HTTP status code returned when this page was visited
@@ -51,7 +51,7 @@ impl Page {
             title: None,
             content_type: None,
             good: None,
-            checked: false,
+            visited: false,
             url: url.clone(),
             status_code: None,
             errors: Vec::<SpiderError>::new(),

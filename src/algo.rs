@@ -80,7 +80,7 @@ pub async fn visit_page(
             let mut graph = graph_mutex.lock().unwrap();
             let page = graph.node_weight_mut(node_index).unwrap();
 
-            page.checked = true;
+            page.visited = true;
             if response_result.is_err() {
                 page.status_code = response_result.err().unwrap().status();
                 page.good = Some(false);

@@ -11,12 +11,12 @@ fn get_link_dot_attributes(
 }
 
 fn get_page_dot_attributes(_graph: &PageGraph, (_index, page): (NodeIndex, &Page)) -> String {
-    let title: String = match (page.checked, page.title.clone()) {
+    let title: String = match (page.visited, page.title.clone()) {
         (false, _) => "???".to_string(),
         (true, None) => "NO TITLE".to_string(),
         (true, Some(t)) => t.trim().to_string(),
     };
-    let color = match (page.checked, page.good) {
+    let color = match (page.visited, page.good) {
         (false, _) => "black",
         (true, Some(true)) => "green",
         (true, Some(false)) => "red",
