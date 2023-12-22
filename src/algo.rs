@@ -157,8 +157,7 @@ pub async fn visit_page(
             let title_element = title_element.next();
             if title_element.is_some() {
                 page.title = Some(title_element.unwrap().inner_html())
-            }
-            else {
+            } else {
                 page.errors.push(SpiderError {
                     error_type: SpiderErrorType::MissingTitle,
                     source_page: Some(url.to_string()),

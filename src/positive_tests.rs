@@ -130,5 +130,4 @@ async fn test_skip_link_class() {
     // Make sure there are no links in the page graph
     // Links with the skip class will be excluded from the page graph
     test_server.assert_link_count(0);
-    
 }
