@@ -7,6 +7,7 @@ use crate::test_utils::SpiderTestServer;
 use crate::Page;
 use crate::SpiderCrab;
 
+/// Single page, reference to example.com
 #[tokio::test]
 async fn test_simple_page() {
     let mut test_server = SpiderTestServer::default();
@@ -19,55 +20,43 @@ async fn test_simple_page() {
         .unwrap();
 
     test_server.add_page(&mut test_page);
-    test_server.run_test().await;
+    assert!(test_server.run_test().await);
 
     // Make sure that the page graph contains two pages
-    // assert_eq!(spider_crab.page_count(), 2);
+    test_server.assert_page_count(2);
 
     // Make sure there is only one link in the page graph
-    // assert_eq!(spider_crab.link_count(), 1);
+    test_server.assert_link_count(1);
 }
 
+/// Two pages, each with a reference to itself and the other page, total of 4 links.
 #[tokio::test]
 async fn test_two_pages() {
-    let mut server = Server::new();
+    let mut test_server = SpiderTestServer::default();
 
-    let url = server.url();
-    let parsed_url = Url::parse(url.as_str()).unwrap();
+    let mut test_page1 = SpiderTestPageBuilder::default()
+        .url("/")
+        .content(include_str!("test_assets/page1.html"))
+        .title("Page 1")
+        .build()
+        .unwrap();
 
-    let mock1 = server
-        .mock("GET", "/")
-        .with_status(201)
-        .with_header("content-type", "text/html")
-        .with_body(include_str!("test_assets/page1.html"))
-        .create();
+    let mut test_page2 = SpiderTestPageBuilder::default()
+        .url("/page2.html")
+        .content(include_str!("test_assets/page2.html"))
+        .title("Page 2")
+        .build()
+        .unwrap();
 
-    let mock2 = server
-        .mock("GET", "/page2.html")
-        .with_status(201)
-        .with_header("content-type", "text/html")
-        .with_body(include_str!("test_assets/page2.html"))
-        .create();
-
-    let mut spider_crab = SpiderCrab::new(&[url.as_str()]);
-
-    let success = spider_crab.visit_website(url.as_str()).await;
-
-    // Make sure that visit _website() returned true
-    assert!(success);
-
-    // Make sure HTTP requests were made to both mocked endpoints
-    mock1.assert();
-    mock2.assert();
+    test_server.add_page(&mut test_page1);
+    test_server.add_page(&mut test_page2);
+    assert!(test_server.run_test().await);
 
     // Make sure that the page graph contains two pages
-    assert_eq!(spider_crab.page_count(), 2);
+    test_server.assert_page_count(2);
 
-    // Make sure that the page graph contains four links
-    assert_eq!(spider_crab.link_count(), 4);
-
-    // Make sure that the page map contains the home page
-    assert!(spider_crab.contains_page(&parsed_url));
+    // Make sure there is only one link in the page graph
+    test_server.assert_link_count(4);
 }
 
 #[tokio::test]
@@ -115,65 +104,31 @@ async fn test_helper_functions() {
 
 #[tokio::test]
 async fn test_skip_link_class() {
-    let mut server = Server::new();
+    let mut test_server = SpiderTestServer::default();
 
-    let url = server.url();
-    let parsed_url = Url::parse(url.as_str()).unwrap();
+    let mut test_page_c = SpiderTestPageBuilder::default()
+        .url("/")
+        .content(include_str!("test_assets/pageC.html"))
+        .build()
+        .unwrap();
 
-    let mock = server
-        .mock("GET", "/")
-        .with_status(201)
-        .with_header("content-type", "text/html")
-        .with_body(include_str!("test_assets/pageC.html"))
-        .create();
+    let mut test_page_d = SpiderTestPageBuilder::default()
+        .url("/page2.html")
+        .content("alert(\"Hello world!\");")
+        .expect_visited(false)
+        .build()
+        .unwrap();
 
-    let mock_page_b = server
-        .mock("GET", "/pageB.html")
-        .with_status(201)
-        .with_body("alert(\"Hello world!\");")
-        .expect(0)
-        .create();
+    test_server.add_page(&mut test_page_c);
+    test_server.add_page(&mut test_page_d);
+    assert!(test_server.run_test().await);
 
-    let mut spider_crab = SpiderCrab::new(&[url.as_str()]);
+    // Make sure that the page graph contains one page
+    // Links with the skip class will be excluded from the page graph
+    test_server.assert_page_count(1);
 
-    let success = spider_crab.visit_website(url.as_str()).await;
-
-    // Make sure the HTTP request was made to the first page
-    mock.assert();
-    mock_page_b.assert();
-
-    // Make sure that visit _website() returned true
-    assert!(success);
-
-    // Make sure that the page graph contains two pages. Even skipped links will be placed in the page map
-    assert_eq!(spider_crab.page_count(), 2);
-
-    // Make sure there are is only one link in the graph
-    assert_eq!(spider_crab.link_count(), 1);
-
-    // Make sure that the page map contains the mock page
-    assert!(spider_crab.contains_page(&parsed_url));
-    assert!(spider_crab.contains_page(&parsed_url.join("pageB.html").unwrap()));
-
-    // Make sure there are two pages in the page map
-    assert_eq!(spider_crab.map.len(), 2);
-
-    // Check the root page
-    {
-        // Make sure that the root page's content type is correct
-        let page_a_weight: &crate::Page = spider_crab.get_page(&parsed_url);
-        assert_eq!(page_a_weight.content_type.as_ref().unwrap(), "text/html");
-        assert!(page_a_weight.visited);
-        assert_eq!(page_a_weight.status_code.unwrap(), 201);
-        assert_eq!(page_a_weight.errors.len(), 0);
-    }
-
-    {
-        // Make sure that page B's content type is correct
-        let page_b_weight = spider_crab.get_page(&parsed_url.join("/pageB.html").unwrap());
-        assert!(page_b_weight.content_type.is_none());
-        assert!(page_b_weight.visited);
-        assert_eq!(page_b_weight.status_code.unwrap(), 201);
-        assert_eq!(page_b_weight.errors.len(), 0);
-    }
+    // Make sure there are no links in the page graph
+    // Links with the skip class will be excluded from the page graph
+    test_server.assert_link_count(0);
+    
 }
