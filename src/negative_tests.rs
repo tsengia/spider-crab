@@ -82,43 +82,34 @@ async fn test_empty_href() {
 
 #[tokio::test]
 async fn test_empty_href_in_second_page() {
-    let mut server = Server::new();
+      let mut test_server = SpiderTestServer::default();
 
-    let url = server.url();
-    let parsed_url = Url::parse(url.as_str()).unwrap();
+      let mut test_page = SpiderTestPageBuilder::default()
+          .url("/")
+          .content("<!DOCTYPE html><html><title>Test Page</title><body><a href=\"pageB.html\">This is a link to page B.</a></body></html>")
+          .title("Test Page")
+          .build()
+          .unwrap();
 
-    let mock = server.mock("GET", "/")
-      .with_status(201)
-      .with_header("content-type", "text/html")
-      .with_body("<!DOCTYPE html><html><body><a href=\"pageB.html\">This is a link to page B.</a></body></html>")
-      .create();
+      let mut test_page_b = SpiderTestPageBuilder::default()
+        .url("/pageB.html")
+        .content("<!DOCTYPE html><html><body><title>Test Page 2</title><a href=\"\">This link has an empty href attribute!</a></body></html>")
+        .title("Test Page 2")
+        .build()
+        .unwrap();
+  
+      test_server.add_page(&mut test_page);
+      test_server.add_page(&mut test_page_b);
+      assert!(!test_server.run_test().await);
+    
+      // Make sure that the page graph contains two pages
+      test_server.assert_page_count(2);
+    
+      // Make sure there is one link in the page graph
+      test_server.assert_link_count(1);
 
-    let mock_page_b = server.mock("GET", "/pageB.html")
-      .with_status(201)
-      .with_header("content-type", "text/html")
-      .with_body("<!DOCTYPE html><html><body><a href=\"\">This link has an empty href attribute!</a></body></html>")
-      .create();
-
-    let mut spider_crab = SpiderCrab::new(&[url.as_str()]);
-
-    let success = spider_crab.visit_website(url.as_str()).await;
-
-    // Make sure the HTTP request was made to the first page
-    mock.assert();
-    mock_page_b.assert();
-
-    // Make sure that visit_website() returned false
-    assert!(!success);
-
-    // Make sure that the page graph contains two pages
-    assert_eq!(spider_crab.page_count(), 2);
-
-    // Make sure there are is only one link in the graph
-    assert_eq!(spider_crab.link_count(), 1);
-
-    // Make sure that the page map contains the mock page
-    assert!(spider_crab.contains_page(&parsed_url));
-    assert!(spider_crab.contains_page(&parsed_url.join("pageB.html").unwrap()));
+      // Make sure there is an HTTP Error recorded
+      test_server.assert_contains_single_error_of_type(SpiderErrorType::EmptyAttribute);
 }
 
 #[tokio::test]
