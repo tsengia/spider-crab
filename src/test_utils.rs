@@ -73,39 +73,39 @@ impl SpiderTestPage<'_> {
         if self.expect_visited {
             assert!(
                 spider.contains_page(self.absolute_url.as_ref().expect("Failed to get absolute URL for test page!")),
-                "Page is not in the page graph!"
+                "Page is not in the page graph!\n{:?}", self
             );
             assert!(
                 spider.map.contains_key(self.absolute_url.as_ref().expect("Failed to get absolute URL for test page!")),
-                "Page is not in the page map!"
+                "Page is not in the page map!\n{:?}", self
             );
 
             let page = spider.get_page(self.absolute_url.as_ref().expect("Failed to get absolute URL!"));
 
-            assert!(page.visited, "Page was not marked as visited in the page graph! {:?}",
+            assert!(page.visited, "Page was not marked as visited in the page graph!\n{:?}",
             self);
             assert!(
                 page.status_code.is_some(),
-                "HTTP Status code was not recorded! {:?}",
+                "HTTP Status code was not recorded!\n{:?}",
                 self
             );
             assert_eq!(
                 page.status_code.unwrap(),
                 self.status_code,
-                "HTTP Status code does not match expected value! {:?}",
+                "HTTP Status code does not match expected value!\n{:?}",
                 self
             );
 
             if self.content_type.is_some() {
                 assert!(
                     page.content_type.is_some(),
-                    "Content-Type was not recorded! {:?}",
+                    "Content-Type was not recorded!\n{:?}",
                     self
                 );
                 assert_eq!(
                     page.content_type.as_ref().unwrap().as_str(),
                     self.content_type.unwrap(),
-                    "Content-Type does not match expected value! {:?}",
+                    "Content-Type does not match expected value!\n{:?}",
                     self
                 );
             }
@@ -113,13 +113,13 @@ impl SpiderTestPage<'_> {
             if self.title.is_some() {
                 assert!(
                     page.title.is_some(),
-                    "Expected title to be recorded but it was not! \nTestPage={:?}\nPage={:?}",
-                    self, page
+                    "Expected title to be recorded but it was not! \n{:?}",
+                    self
                 );
                 assert_eq!(
                     page.title.as_ref().unwrap().as_str(),
                     self.title.unwrap(),
-                    "Recorded title does not match expected value for page! {:?}",
+                    "Recorded title does not match expected value for page!\n{:?}",
                     self
                 );
             } else {
