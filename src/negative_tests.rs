@@ -104,11 +104,13 @@ async fn test_empty_script() {
     let mut test_server = SpiderTestServer::default();
 
     let mut test_page = SpiderTestPageBuilder::default()
-      .url("/")
-      .content("<!DOCTYPE html><html><title>Test Page</title><body><script></script></body></html>")
-      .title("Test Page")
-      .build()
-      .unwrap();
+        .url("/")
+        .content(
+            "<!DOCTYPE html><html><title>Test Page</title><body><script></script></body></html>",
+        )
+        .title("Test Page")
+        .build()
+        .unwrap();
 
     test_server.add_page(&mut test_page);
     assert!(!test_server.run_test().await);
@@ -243,7 +245,6 @@ async fn test_missing_image() {
     // Make sure there is an HTTP Error recorded
     test_server.assert_contains_single_error_of_type(SpiderErrorType::HTTPError);
 }
-
 
 #[tokio::test]
 async fn test_missing_script() {

@@ -184,8 +184,8 @@ pub async fn visit_page(
             if next_url.is_err() {
                 error!("Failed to get URL from element: {}", l.html());
 
-                found_problem = true; 
-                               
+                found_problem = true;
+
                 let page = graph.node_weight_mut(node_index).unwrap();
                 page.errors.push(next_url.unwrap_err());
                 continue;
@@ -202,7 +202,7 @@ pub async fn visit_page(
                     );
 
                     found_problem = true;
-                    
+
                     let page = graph.node_weight_mut(node_index).unwrap();
                     page.errors.push(SpiderError {
                         error_type: SpiderErrorType::EmptyScript,
