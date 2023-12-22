@@ -144,7 +144,7 @@ impl SpiderTestPage<'_> {
 pub struct SpiderTestServer<'a> {
     pages: Vec<&'a mut SpiderTestPage<'a>>,
     server: ServerGuard,
-    spider_crab: SpiderCrab,
+    pub spider_crab: SpiderCrab,
 }
 
 impl Default for SpiderTestServer<'_> {
@@ -158,14 +158,7 @@ impl Default for SpiderTestServer<'_> {
 }
 
 impl<'a> SpiderTestServer<'a> {
-    pub async fn run_test(mut self) -> bool {
-        stderrlog::new()
-            .module(module_path!())
-            .quiet(false)
-            .verbosity(stderrlog::LogLevelNum::Trace)
-            .init()
-            .unwrap();
-
+    pub async fn run_test(&mut self) -> bool {
         // Add the mock server to list of hosts for the traversal options
         self.spider_crab.options.add_host(self.server.url().as_str());
 
@@ -184,5 +177,13 @@ impl<'a> SpiderTestServer<'a> {
 
     pub fn add_page(&mut self, page: &'a mut SpiderTestPage<'a>) {
         self.pages.push(page);
+    }
+
+    pub fn assert_page_count(&mut self, expected_pages: usize) {
+        assert_eq!(self.spider_crab.page_count(), expected_pages, "Page graph does not contain the expected number of pages!");
+    }
+
+    pub fn assert_link_count(&mut self, expected_links: usize) {
+        assert_eq!(self.spider_crab.link_count(), expected_links, "Page graph does not contain the expected number of links!");
     }
 }
