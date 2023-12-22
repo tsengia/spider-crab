@@ -9,7 +9,7 @@ use url::{Host, ParseError, Url};
 /// `a`, and `link` elements will extract the URL from the `href` attribute
 /// Returns `Ok(Some(Url))` if extract + parse was successful
 /// Returns `Ok(None)` if element did not have a URL, but it is not required to have one (such as the `script` elemnt)
-/// Returns `Err(SpiderError)` if element did not
+/// Returns `Err(SpiderError)` if element did not have a URL, and is required to have one
 pub fn get_url_from_element(
     element: ElementRef,
     current_url: &Url,
