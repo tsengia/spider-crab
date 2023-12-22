@@ -80,16 +80,14 @@ pub async fn visit_page(
             let mut graph = graph_mutex.lock().unwrap();
             let page = graph.node_weight_mut(node_index).unwrap();
 
-            page.checked = true;
+            page.visited = true;
             if response_result.is_err() {
                 page.status_code = response_result.err().unwrap().status();
                 page.good = Some(false);
                 page.errors.push(SpiderError {
-                    html: None,
-                    source_page: None,
                     target_page: Some(url.to_string()),
-                    http_error_code: None,
                     error_type: SpiderErrorType::UnableToRetrieve,
+                    ..Default::default()
                 });
                 return false;
             }
@@ -101,11 +99,10 @@ pub async fn visit_page(
             if !response.status().is_success() {
                 page.good = Some(false);
                 page.errors.push(SpiderError {
-                    html: None,
-                    source_page: None,
                     target_page: Some(url.to_string()),
                     http_error_code: Some(response.status().as_u16()),
                     error_type: SpiderErrorType::HTTPError,
+                    ..Default::default()
                 });
                 return false;
             }
@@ -142,6 +139,11 @@ pub async fn visit_page(
             if contents.is_err() {
                 page.good = Some(false);
                 error!("Failed to get contents of page! {}", url);
+                page.errors.push(SpiderError {
+                    target_page: Some(url.to_string()),
+                    error_type: SpiderErrorType::UnableToRetrieve,
+                    ..Default::default()
+                });
                 return false;
             }
         }
@@ -151,20 +153,27 @@ pub async fn visit_page(
             let page = graph.node_weight_mut(node_index).unwrap();
             page.good = Some(true);
 
-            let title_element = html.select(options.title_selector.as_ref());
-            let title_element = title_element.last();
+            let mut title_element = html.select(options.title_selector.as_ref());
+            let title_element = title_element.next();
             if title_element.is_some() {
                 page.title = Some(title_element.unwrap().inner_html())
+            } else {
+                page.errors.push(SpiderError {
+                    error_type: SpiderErrorType::MissingTitle,
+                    source_page: Some(url.to_string()),
+                    ..SpiderError::default()
+                });
+                warn!("Page at {} does not have a title!", url.as_str());
             }
         }
 
         info!("Visited page {}", url.as_str());
 
-        let links = html.select(options.link_selector.as_ref());
+        let elements = html.select(options.element_selector.as_ref());
 
         let mut page_map = page_map_mutex.lock().unwrap();
 
-        for l in links {
+        for l in elements {
             if l.has_class(&options.skip_class, scraper::CaseSensitivity::CaseSensitive) {
                 // Link is marked with the spider-crab-skip class, so skip it
                 continue;
@@ -176,9 +185,30 @@ pub async fn visit_page(
                 error!("Failed to get URL from element: {}", l.html());
 
                 found_problem = true;
-                {
+
+                let page = graph.node_weight_mut(node_index).unwrap();
+                page.errors.push(next_url.unwrap_err());
+                continue;
+            }
+
+            let next_url = next_url.unwrap();
+            if next_url.is_none() {
+                // Element did not contain a URL, but it was not required, so make sure it's innerHTML contains content
+                // This case only happens for <script> elements
+                if l.inner_html().trim().is_empty() {
+                    error!(
+                        "Script element at page {} is missing content!",
+                        url.as_str()
+                    );
+
+                    found_problem = true;
+
                     let page = graph.node_weight_mut(node_index).unwrap();
-                    page.errors.push(next_url.unwrap_err());
+                    page.errors.push(SpiderError {
+                        error_type: SpiderErrorType::EmptyScript,
+                        source_page: Some(url.to_string()),
+                        ..SpiderError::default()
+                    });
                 }
                 continue;
             }

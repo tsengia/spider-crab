@@ -108,10 +108,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
         let e = Box::new(SpiderError {
             error_type: spider_crab::error::SpiderErrorType::FailedCrawl,
-            source_page: None,
-            http_error_code: None,
-            target_page: None,
-            html: None,
+            ..Default::default()
         }) as Box<dyn std::error::Error>;
         if dot_output_file.is_some() {
             let save_result = save_graph_file(&spider_crab, dot_output_file.unwrap());
