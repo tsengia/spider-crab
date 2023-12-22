@@ -201,8 +201,9 @@ impl<'a> SpiderTestServer<'a> {
         return result;
     }
 
-    pub fn add_page(&mut self, page: &'a mut SpiderTestPage<'a>) {
+    pub fn add_page(&mut self, page: &'a mut SpiderTestPage<'a>) -> &mut Self {
         self.pages.push(page);
+        return self;
     }
 
     pub fn assert_page_count(&mut self, expected_pages: usize) {
