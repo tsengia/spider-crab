@@ -184,29 +184,31 @@ pub async fn visit_page(
             if next_url.is_err() {
                 error!("Failed to get URL from element: {}", l.html());
 
-                found_problem = true;
-                {
-                    let page = graph.node_weight_mut(node_index).unwrap();
-                    page.errors.push(next_url.unwrap_err());
-                }
+                found_problem = true; 
+                               
+                let page = graph.node_weight_mut(node_index).unwrap();
+                page.errors.push(next_url.unwrap_err());
                 continue;
             }
 
             let next_url = next_url.unwrap();
             if next_url.is_none() {
-                // Element did not contain a URL, but it was not required, make sure it's innerHTML contains content
+                // Element did not contain a URL, but it was not required, so make sure it's innerHTML contains content
+                // This case only happens for <script> elements
                 if l.inner_html().trim().is_empty() {
-                    error!("Script element at page {} is missing content!", url.as_str());
+                    error!(
+                        "Script element at page {} is missing content!",
+                        url.as_str()
+                    );
 
                     found_problem = true;
-                    {
-                        let page = graph.node_weight_mut(node_index).unwrap();
-                        page.errors.push(SpiderError {
-                            error_type: SpiderErrorType::EmptyScript,
-                            source_page: Some(url.to_string()),
-                            ..SpiderError::default()
-                        });
-                    }
+                    
+                    let page = graph.node_weight_mut(node_index).unwrap();
+                    page.errors.push(SpiderError {
+                        error_type: SpiderErrorType::EmptyScript,
+                        source_page: Some(url.to_string()),
+                        ..SpiderError::default()
+                    });
                 }
                 continue;
             }
