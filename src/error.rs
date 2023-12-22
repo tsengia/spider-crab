@@ -19,6 +19,7 @@ pub enum SpiderErrorType {
     MissingAttribute,
     EmptyAttribute,
     MissingTitle,
+    EmptyScript,
     FailedCrawl,
 }
 
@@ -75,6 +76,10 @@ impl SpiderError {
             ),
             SpiderErrorType::MissingTitle => format!(
                 "Page at {:?} does not have a title!",
+                self.source_page.as_ref().unwrap()
+            ),
+            SpiderErrorType::EmptyScript => format!(
+                "Page at {:?} has a <script> tag with no `src` attribute and no JavaScript code inside!",
                 self.source_page.as_ref().unwrap()
             ),
             SpiderErrorType::FailedCrawl => {

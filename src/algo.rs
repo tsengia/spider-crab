@@ -194,7 +194,20 @@ pub async fn visit_page(
 
             let next_url = next_url.unwrap();
             if next_url.is_none() {
-                // Element did not contain a URL, but it was not required, so skip it
+                // Element did not contain a URL, but it was not required, make sure it's innerHTML contains content
+                if l.inner_html().trim().is_empty() {
+                    error!("Script element at page {} is missing content!", url.as_str());
+
+                    found_problem = true;
+                    {
+                        let page = graph.node_weight_mut(node_index).unwrap();
+                        page.errors.push(SpiderError {
+                            error_type: SpiderErrorType::EmptyScript,
+                            source_page: Some(url.to_string()),
+                            ..SpiderError::default()
+                        });
+                    }
+                }
                 continue;
             }
             let next_url = next_url.unwrap();
