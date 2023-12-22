@@ -10,7 +10,7 @@ async-recursion = "1.0.5"
 clap = "4.4.7"
 futures = "0.3.29"
 petgraph = "0.6.4"
-reqwest = "0.11.22"
+reqwest = { version = "0.11.22", features = ["gzip", "deflate", "brotli"] }
 scraper = "0.18.1"
 stderrlog = "0.5.4"
 log = "0.4.20"
