@@ -164,7 +164,7 @@ pub async fn visit_page(
                     source_page: Some(url.to_string()),
                     ..SpiderError::default()
                 });
-                warn!("Page at {} does not have a title! {:?}", url.as_str(), options);
+                warn!("Page at {} does not have a title!", url.as_str());
             }
         }
 
