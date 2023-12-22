@@ -190,7 +190,12 @@ impl<'a> SpiderTestServer<'a> {
     }
 
     pub fn assert_contains_single_error_of_type(&mut self, error_type: SpiderErrorType) {
-        assert_eq!(self.spider_crab.errors().count(), 1, "More errors found than expected!");
+        if self.spider_crab.errors().count() > 1 {
+            panic!("Expected 1 error of type {:?} but found these errors instead:\n{:?}", error_type, self.spider_crab.errors().collect::<Vec<_>>());
+        } 
+        if self.spider_crab.errors().count() == 0 {
+            panic!("Expected 1 error of type {:?} but found none!", error_type);
+        }
         assert!(self.spider_crab.errors().all(|e| e.error_type == error_type));
     }
 
