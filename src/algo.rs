@@ -153,10 +153,18 @@ pub async fn visit_page(
             let page = graph.node_weight_mut(node_index).unwrap();
             page.good = Some(true);
 
-            let title_element = html.select(options.title_selector.as_ref());
-            let title_element = title_element.last();
+            let mut title_element = html.select(options.title_selector.as_ref());
+            let title_element = title_element.next();
             if title_element.is_some() {
                 page.title = Some(title_element.unwrap().inner_html())
+            }
+            else {
+                page.errors.push(SpiderError {
+                    error_type: SpiderErrorType::MissingTitle,
+                    source_page: Some(url.to_string()),
+                    ..SpiderError::default()
+                });
+                warn!("Page at {} does not have a title! {:?}", url.as_str(), options);
             }
         }
 
