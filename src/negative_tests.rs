@@ -34,68 +34,50 @@ async fn test_missing_page() {
 
 #[tokio::test]
 async fn test_missing_href() {
-    let mut server = Server::new();
+  let mut test_server = SpiderTestServer::default();
 
-    let url = server.url();
-    let parsed_url = Url::parse(url.as_str()).unwrap();
+  let mut test_page = SpiderTestPageBuilder::default()
+      .url("/")
+      .content("<!DOCTYPE html><html><title>Test Page</title><body><a>This link doesn't have an href attribute!</a></body></html>")
+      .title("Test Page")
+      .build()
+      .unwrap();
 
-    let mock = server.mock("GET", "/")
-      .with_status(201)
-      .with_header("content-type", "text/html")
-      .with_body("<!DOCTYPE html><html><body><a>This link doesn't have an href attribute!</a></body></html>")
-      .create();
+  test_server.add_page(&mut test_page);
+  assert!(!test_server.run_test().await);
 
-    let mut spider_crab = SpiderCrab::new(&[url.as_str()]);
+  // Make sure that the page graph contains one page
+  test_server.assert_page_count(1);
 
-    let success = spider_crab.visit_website(url.as_str()).await;
+  // Make sure there is are no links in the page graph
+  test_server.assert_link_count(0);
 
-    // Make sure the HTTP request was made to the first page
-    mock.assert();
-
-    // Make sure that visit_website() returned false
-    assert!(!success);
-
-    // Make sure that the page graph contains one page
-    assert_eq!(spider_crab.page_count(), 1);
-
-    // Make sure there are no links in the page graph
-    assert_eq!(spider_crab.link_count(), 0);
-
-    // Make sure that the page map contains the mock page
-    assert!(spider_crab.contains_page(&parsed_url));
+  // Make sure there is an HTTP Error recorded
+  test_server.assert_contains_single_error_of_type(SpiderErrorType::MissingAttribute);
 }
 
 #[tokio::test]
 async fn test_empty_href() {
-    let mut server = Server::new();
+    let mut test_server = SpiderTestServer::default();
 
-    let url = server.url();
-    let parsed_url = Url::parse(url.as_str()).unwrap();
+    let mut test_page = SpiderTestPageBuilder::default()
+        .url("/")
+        .content("<!DOCTYPE html><html><title>Test Page</title><body><a href=\"\">This link's href attribute is empty!</a></body></html>")
+        .title("Test Page")
+        .build()
+        .unwrap();
 
-    let mock = server.mock("GET", "/")
-      .with_status(201)
-      .with_header("content-type", "text/html")
-      .with_body("<!DOCTYPE html><html><body><a href=\"\">This link's href attribute is empty!</a></body></html>")
-      .create();
-
-    let mut spider_crab = SpiderCrab::new(&[url.as_str()]);
-
-    let success = spider_crab.visit_website(url.as_str()).await;
-
-    // Make sure the HTTP request was made to the first page
-    mock.assert();
-
-    // Make sure that visit_website() returned false
-    assert!(!success);
-
+    test_server.add_page(&mut test_page);
+    assert!(!test_server.run_test().await);
+  
     // Make sure that the page graph contains one page
-    assert_eq!(spider_crab.page_count(), 1);
-
-    // Make sure there are no links in the page graph
-    assert_eq!(spider_crab.link_count(), 0);
-
-    // Make sure that the page map contains the mock page
-    assert!(spider_crab.contains_page(&parsed_url));
+    test_server.assert_page_count(1);
+  
+    // Make sure there is are no links in the page graph
+    test_server.assert_link_count(0);
+  
+    // Make sure there is an HTTP Error recorded
+    test_server.assert_contains_single_error_of_type(SpiderErrorType::EmptyAttribute);
 }
 
 #[tokio::test]
@@ -141,65 +123,34 @@ async fn test_empty_href_in_second_page() {
 
 #[tokio::test]
 async fn test_empty_content_type() {
-    let mut server = Server::new();
+    let mut test_server = SpiderTestServer::default();
 
-    let url = server.url();
-    let parsed_url = Url::parse(url.as_str()).unwrap();
+    let mut test_page = SpiderTestPageBuilder::default()
+        .url("/")
+        .content("<!DOCTYPE html><html><head><title>Test Page</title></head><body><a href=\"pageB.html\" >This points to a missing page!</a></body></html>")
+        .title("Test Page")
+        .build()
+        .unwrap();
 
-    let mock = server.mock("GET", "/")
-      .with_status(201)
-      .with_header("content-type", "text/html")
-      .with_body("<!DOCTYPE html><html><body><a href=\"pageB.html\">This is a link to page B.</a></body></html>")
-      .create();
+    let mut test_js: crate::test_utils::SpiderTestPage<'_> = SpiderTestPageBuilder::default()
+        .url("/pageB.html")
+        .status_code(200)
+        .content("alert(\"Hello world!\");")
+        .content_type(None)
+        .build()
+        .unwrap();
+  
+    test_server.add_page(&mut test_page);
+    test_server.add_page(&mut test_js);
 
-    let mock_page_b = server
-        .mock("GET", "/pageB.html")
-        .with_status(201)
-        .with_body("alert(\"Hello world!\");")
-        .create();
-
-    let mut spider_crab = SpiderCrab::new(&[url.as_str()]);
-
-    let success = spider_crab.visit_website(url.as_str()).await;
-
-    // Make sure the HTTP request was made to the first page
-    mock.assert();
-    mock_page_b.assert();
-
-    // Make sure that visit _website() returned true
-    assert!(success);
-
+    // Note that in this case, we expect the traversal to succeed
+    assert!(test_server.run_test().await);
+  
     // Make sure that the page graph contains two pages
-    assert_eq!(spider_crab.page_count(), 2);
-
-    // Make sure there are is only one link in the graph
-    assert_eq!(spider_crab.link_count(), 1);
-
-    // Make sure that the page map contains the mock page
-    assert!(spider_crab.contains_page(&parsed_url));
-    assert!(spider_crab.contains_page(&parsed_url.join("pageB.html").unwrap()));
-
-    // Make sure there are two pages in the page map
-    assert_eq!(spider_crab.map.len(), 2);
-
-    // Check the root page
-    {
-        // Make sure that the root page's content type is correct
-        let page_a_weight: &crate::Page = spider_crab.get_page(&parsed_url);
-        assert_eq!(page_a_weight.content_type.as_ref().unwrap(), "text/html");
-        assert!(page_a_weight.visited);
-        assert_eq!(page_a_weight.status_code.unwrap(), 201);
-        assert!(page_a_weight.errors.is_empty());
-    }
-
-    {
-        // Make sure that page B's content type is correct
-        let page_b_weight = spider_crab.get_page(&parsed_url.join("/pageB.html").unwrap());
-        assert!(page_b_weight.content_type.is_none());
-        assert!(page_b_weight.visited);
-        assert_eq!(page_b_weight.status_code.unwrap(), 201);
-        assert!(page_b_weight.errors.is_empty());
-    }
+    test_server.assert_page_count(2);
+  
+    // Make sure there is are is one link in the page graph
+    test_server.assert_link_count(1);
 }
 
 #[tokio::test]
