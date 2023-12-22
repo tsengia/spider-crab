@@ -1,4 +1,5 @@
 # Spider Crab
+![Spider Crab Logo](spider_crab_logo.png)  
 [![CI Build](https://github.com/tsengia/spider-crab/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/tsengia/spider-crab/actions/workflows/rust.yml)  
 
 Web crawler for checking links.
