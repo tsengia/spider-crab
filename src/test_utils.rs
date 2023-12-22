@@ -8,7 +8,6 @@ use crate::error::{SpiderError, SpiderErrorType};
 use crate::SpiderCrab;
 
 #[derive(Builder, Debug)]
-#[builder(setter(strip_option))]
 pub struct SpiderTestPage<'a> {
     /// HTTP Method this mock listens for
     #[builder(default = "\"GET\"")]
@@ -19,12 +18,15 @@ pub struct SpiderTestPage<'a> {
     #[builder(default = "200")]
     status_code: u16,
     /// Content returned in the response body of the mock
+    #[builder(default = "None")]
+    #[builder(setter(strip_option))]
     pub content: Option<&'a str>,
     /// Content Type this mock will return
     #[builder(default = "Some(\"text/html\")")]
     pub content_type: Option<&'a str>,
     /// Title of the page
     #[builder(default = "None")]
+    #[builder(setter(strip_option))]
     pub title: Option<&'a str>,
     /// Set to true if we expect this mock to be visited, set to false if it should NOT be visited
     #[builder(default = "true")]
@@ -185,5 +187,18 @@ impl<'a> SpiderTestServer<'a> {
 
     pub fn assert_link_count(&mut self, expected_links: usize) {
         assert_eq!(self.spider_crab.link_count(), expected_links, "Page graph does not contain the expected number of links!");
+    }
+
+    pub fn assert_contains_single_error_of_type(&mut self, error_type: SpiderErrorType) {
+        assert_eq!(self.spider_crab.errors().count(), 1, "More errors found than expected!");
+        assert!(self.spider_crab.errors().all(|e| e.error_type == error_type));
+    }
+
+    pub fn assert_contains_error_of_type(&mut self, error_type: SpiderErrorType) {
+        assert!(self.spider_crab.errors().any(|e| e.error_type == error_type), "Failed to find expected error type!");
+    }
+
+    pub fn assert_contains_multiple_errors_of_type(&mut self, number_of_errors: u32, error_type: SpiderErrorType) {
+        assert_eq!(self.spider_crab.errors().filter(|e| e.error_type == error_type).count() as u32, number_of_errors, "Failed to find expected number of error type!");
     }
 }
