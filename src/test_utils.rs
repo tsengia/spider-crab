@@ -239,15 +239,6 @@ impl<'a> SpiderTestServer<'a> {
             .all(|e| e.error_type == error_type));
     }
 
-    pub fn assert_contains_error_of_type(&mut self, error_type: SpiderErrorType) {
-        assert!(
-            self.spider_crab
-                .errors()
-                .any(|e| e.error_type == error_type),
-            "Failed to find expected error type!"
-        );
-    }
-
     pub fn assert_contains_multiple_errors_of_type(
         &mut self,
         number_of_errors: u32,
