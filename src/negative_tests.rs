@@ -277,3 +277,44 @@ async fn test_missing_script() {
     // Make sure there is an HTTP Error recorded
     test_server.assert_contains_single_error_of_type(SpiderErrorType::HTTPError);
 }
+
+#[tokio::test]
+async fn test_missing_script_and_missing_img() {
+    let mut test_server = SpiderTestServer::default();
+
+    let mut test_page = SpiderTestPageBuilder::default()
+        .url("/")
+        .content("<!DOCTYPE html><html><head><title>Test Page</title></head><body><script src=\"test.js\" ></script><img src=\"test.png\" /></body></html>")
+        .title("Test Page")
+        .build()
+        .unwrap();
+
+    let mut test_image = SpiderTestPageBuilder::default()
+        .url("/test.png")
+        .status_code(404)
+        .content_type(None)
+        .build()
+        .unwrap();
+
+    let mut test_script = SpiderTestPageBuilder::default()
+        .url("/test.js")
+        .status_code(404)
+        .content_type(None)
+        .build()
+        .unwrap();
+
+    test_server
+        .add_page(&mut test_page)
+        .add_page(&mut test_script)
+        .add_page(&mut test_image);
+    assert!(!test_server.run_test().await);
+
+    // Make sure that the page graph contains three pages
+    test_server.assert_page_count(3);
+
+    // Make sure there is are is two links in the page graph
+    test_server.assert_link_count(2);
+
+    // Make sure there is an HTTP Error recorded
+    test_server.assert_contains_multiple_errors_of_type(2, SpiderErrorType::HTTPError);
+}
