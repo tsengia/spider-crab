@@ -6,9 +6,9 @@ Web crawler for checking links.
 The purpose of spider crab is to provide a small, portable, and fast static website checker that can be used in CI pipelines to monitor for broken links.
 
 If Spider Crab finds the following, then it will return a non-zero exit code:
-- Broken link
-- `<a>` element without an `href` attribute
-- `<a>` element with an `href` attribute that is blank (`href=""`)
+- Page/referenced URL returns an unsuccessful HTTP status code
+- `<a>` or `<link>` element without an `href` attribute, or an `href` attribute that is blank (`href=""`)
+- `<img>` element without an `src` attribute, or a `src` attribute that is empty
 
 If Spider Crab does not find any issues, then it will return a `0` exit code.
 
@@ -21,7 +21,7 @@ Arguments:
 Options:
   -d, --depth <depth>  Depth of links to check. Default is -1 which is unlimited. [default: -1]
   -q, --quiet          Do not print to STDOUT or STDERR.
-  -v, --verbose        Print more log messages.
+  -v, --verbose        Print more log messages. Append additional 'v' characters to increase verbosity.
   -h, --help           Print help
   -V, --version        Print version
 ```
@@ -32,7 +32,7 @@ spider-crab -v https://example.com
 ```
 
 ## Skipping Links
-If you do not want Spider Crab to check a link on your webpage, add the `scrab-skip` CSS class to the link.
+If you do not want Spider Crab to check a link/element on your webpage, add the `scrab-skip` CSS class to the link.
 
 Example:
 ```html
