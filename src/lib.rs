@@ -106,7 +106,7 @@ impl Default for SpiderOptions {
         Self {
             max_depth: -1,
             element_selector: Box::new(
-                Selector::parse("a,link,img,script").expect("Invalid selector!"),
+                Selector::parse("a,link,img").expect("Invalid selector!"),
             ),
             title_selector: Box::new(Selector::parse("title").expect("Invalid <title> selector!")),
             skip_class: CssLocalName::from("scrab-skip"),
