@@ -48,8 +48,9 @@ async fn test_two_pages() {
         .build()
         .unwrap();
 
-    test_server.add_page(&mut test_page1);
-    test_server.add_page(&mut test_page2);
+    test_server
+        .add_page(&mut test_page1)
+        .add_page(&mut test_page2);
     assert!(test_server.run_test().await);
 
     // Make sure that the page graph contains two pages
@@ -119,8 +120,9 @@ async fn test_skip_link_class() {
         .build()
         .unwrap();
 
-    test_server.add_page(&mut test_page_c);
-    test_server.add_page(&mut test_page_d);
+    test_server
+        .add_page(&mut test_page_c)
+        .add_page(&mut test_page_d);
     assert!(test_server.run_test().await);
 
     // Make sure that the page graph contains one page
