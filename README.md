@@ -7,10 +7,10 @@ Web crawler for checking links.
 The purpose of spider crab is to provide a small, portable, and fast static website checker that can be used in CI pipelines to monitor for broken links.
 
 If Spider Crab finds the following, then it will return a non-zero exit code:
-- Page/referenced URL returns an unsuccessful HTTP status code
-- `<a>` or `<link>` element without an `href` attribute, or an `href` attribute that is blank (`href=""`)
-- `<img>` element without a `src` attribute, or a `src` attribute that is empty
-- `<script>` element without a `src` attribute and no content between the tags
+- A referenced URL/page returns an unsuccessful HTTP status code
+- An `<a>` or `<link>` element without an `href` attribute, or an `href` attribute that is blank (`href=""`)
+- An `<img>` element without a `src` attribute, or a `src` attribute that is empty
+- A `<script>` element without a `src` attribute and no content between the tags
 
 If Spider Crab does not find any issues, then it will return a `0` exit code.
 
