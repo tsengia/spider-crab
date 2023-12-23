@@ -86,43 +86,43 @@ impl SpiderError {
     fn get_message(&self) -> String {
         match self.error_type {
             SpiderErrorType::UnableToRetrieve => format!(
-                "(Check: {}) Failed to retrieve content for page {:?}!",
+                "(Rule: {}) Failed to retrieve content for page {:?}!",
                 self.error_type.get_rule_name(),
                 self.target_page.as_ref().unwrap()
             ),
             SpiderErrorType::HTTPError => format!(
-                "(Check: {}) HTTP GET request received status code {:?} for page {:?}!",
+                "(Rule: {}) HTTP GET request received status code {:?} for page {:?}!",
                 self.error_type.get_rule_name(),
                 self.http_error_code.as_ref().unwrap(),
                 self.target_page.as_ref().unwrap()
             ),
             SpiderErrorType::InvalidURL => format!(
-                "(Check: {}) Page at {:?} contains a reference to an invalid URL {:?}!",
+                "(Rule: {}) Page at {:?} contains a reference to an invalid URL {:?}!",
                 self.error_type.get_rule_name(),
                 self.source_page.as_ref().unwrap(),
                 self.target_page.as_ref().unwrap()
             ),
             SpiderErrorType::MissingAttribute => format!(
-                "(Check: {}) Page at {:?} contains an element with no {:?} attribute! Element is: {:?}",
+                "(Rule: {}) Page at {:?} contains an element with no {:?} attribute! Element is: {:?}",
                 self.error_type.get_rule_name(),
                 self.source_page.as_ref().unwrap(),
                 self.attribute.as_ref().unwrap(),
                 self.html.as_ref().unwrap()
             ),
             SpiderErrorType::EmptyAttribute => format!(
-                "(Check: {}) Page at {:?} contains a link with an empty {:?} attribute! Element is: {:?}",
+                "(Rule: {}) Page at {:?} contains a link with an empty {:?} attribute! Element is: {:?}",
                 self.error_type.get_rule_name(),
                 self.source_page.as_ref().unwrap(),
                 self.attribute.as_ref().unwrap(),
                 self.html.as_ref().unwrap()
             ),
             SpiderErrorType::MissingTitle => format!(
-                "(Check: {}) Page at {:?} does not have a title!",
+                "(Rule: {}) Page at {:?} does not have a title!",
                 self.error_type.get_rule_name(),
                 self.source_page.as_ref().unwrap()
             ),
             SpiderErrorType::EmptyScript => format!(
-                "(Check: {}) Page at {:?} has a <script> tag with no `src` attribute and no JavaScript code inside!",
+                "(Rule: {}) Page at {:?} has a <script> tag with no `src` attribute and no JavaScript code inside!",
                 self.error_type.get_rule_name(),
                 self.source_page.as_ref().unwrap()
             ),
