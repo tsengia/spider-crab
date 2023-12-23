@@ -84,12 +84,16 @@ pub async fn visit_page(
             if response_result.is_err() {
                 page.status_code = response_result.err().unwrap().status();
                 page.good = Some(false);
-                page.errors.push(SpiderError {
-                    target_page: Some(url.to_string()),
-                    error_type: SpiderErrorType::UnableToRetrieve,
-                    ..Default::default()
-                });
-                return false;
+
+                if options.is_rule_enabled(SpiderErrorType::UnableToRetrieve, &url) {
+                    page.errors.push(SpiderError {
+                        target_page: Some(url.to_string()),
+                        error_type: SpiderErrorType::UnableToRetrieve,
+                        ..Default::default()
+                    });
+                    return false;
+                }
+                return true;
             }
 
             response = response_result.unwrap();
@@ -98,13 +102,16 @@ pub async fn visit_page(
             page.status_code = Some(response.status());
             if !response.status().is_success() {
                 page.good = Some(false);
-                page.errors.push(SpiderError {
-                    target_page: Some(url.to_string()),
-                    http_error_code: Some(response.status().as_u16()),
-                    error_type: SpiderErrorType::HTTPError,
-                    ..Default::default()
-                });
-                return false;
+                if options.is_rule_enabled(SpiderErrorType::HTTPError, &url) {
+                    page.errors.push(SpiderError {
+                        target_page: Some(url.to_string()),
+                        http_error_code: Some(response.status().as_u16()),
+                        error_type: SpiderErrorType::HTTPError,
+                        ..Default::default()
+                    });
+                    return false;
+                }
+                return true;
             }
 
             // Attempt to get the Content-Type of the page
@@ -138,13 +145,17 @@ pub async fn visit_page(
             let page = graph.node_weight_mut(node_index).unwrap();
             if contents.is_err() {
                 page.good = Some(false);
-                error!("Failed to get contents of page! {}", url);
-                page.errors.push(SpiderError {
-                    target_page: Some(url.to_string()),
-                    error_type: SpiderErrorType::UnableToRetrieve,
-                    ..Default::default()
-                });
-                return false;
+
+                if options.is_rule_enabled(SpiderErrorType::UnableToRetrieve, &url) {
+                    error!("Failed to get contents of page! {}", url);
+                    page.errors.push(SpiderError {
+                        target_page: Some(url.to_string()),
+                        error_type: SpiderErrorType::UnableToRetrieve,
+                        ..Default::default()
+                    });
+                    return false;
+                }
+                return true;
             }
         }
         let contents = contents.unwrap();
@@ -157,7 +168,7 @@ pub async fn visit_page(
             let title_element = title_element.next();
             if title_element.is_some() {
                 page.title = Some(title_element.unwrap().inner_html())
-            } else {
+            } else if options.is_rule_enabled(SpiderErrorType::MissingTitle, &url) {
                 page.errors.push(SpiderError {
                     error_type: SpiderErrorType::MissingTitle,
                     source_page: Some(url.to_string()),
@@ -182,12 +193,15 @@ pub async fn visit_page(
             // Parse out a URL from the link
             let next_url = get_url_from_element(l, &url);
             if next_url.is_err() {
-                error!("Failed to get URL from element: {}", l.html());
+                let err = next_url.unwrap_err();
+                if options.is_rule_enabled(err.error_type.clone(), &url) {
+                    error!("Failed to get URL from element: {}", l.html());
 
-                found_problem = true;
+                    found_problem = true;
 
-                let page = graph.node_weight_mut(node_index).unwrap();
-                page.errors.push(next_url.unwrap_err());
+                    let page = graph.node_weight_mut(node_index).unwrap();
+                    page.errors.push(err);
+                }
                 continue;
             }
 
@@ -195,7 +209,9 @@ pub async fn visit_page(
             if next_url.is_none() {
                 // Element did not contain a URL, but it was not required, so make sure it's innerHTML contains content
                 // This case only happens for <script> elements
-                if l.inner_html().trim().is_empty() {
+                if l.inner_html().trim().is_empty()
+                    && options.is_rule_enabled(SpiderErrorType::EmptyScript, &url)
+                {
                     error!(
                         "Script element at page {} is missing content!",
                         url.as_str()

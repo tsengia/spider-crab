@@ -86,7 +86,7 @@ fn test_check_host_match() {
     let url = Url::parse("https://example.net").unwrap();
     let host_name = "example.net";
     assert!(check_host(
-        &vec!(Host::parse(host_name).unwrap().to_owned()),
+        &[Host::parse(host_name).unwrap().to_owned()],
         &url
     ));
 }
@@ -96,7 +96,7 @@ fn test_check_host_match_ipv4() {
     let url = Url::parse("https://172.0.0.1").unwrap();
     let host_name = "172.0.0.1";
     assert!(check_host(
-        &vec!(Host::parse(host_name).unwrap().to_owned()),
+        &[Host::parse(host_name).unwrap().to_owned()],
         &url
     ));
 }
@@ -106,7 +106,7 @@ fn test_check_host_match_ipv6() {
     let url = Url::parse("https://[::1]").unwrap();
     let host_name = "[::1]";
     assert!(check_host(
-        &vec!(Host::parse(host_name).unwrap().to_owned()),
+        &[Host::parse(host_name).unwrap().to_owned()],
         &url
     ));
 }
@@ -116,7 +116,7 @@ fn test_check_domain_match_with_params() {
     let url = Url::parse("https://abcd123.com/another/file?q=3&c=234234").unwrap();
     let host_name = "abcd123.com";
     assert!(check_host(
-        &vec!(Host::parse(host_name).unwrap().to_owned()),
+        &[Host::parse(host_name).unwrap().to_owned()],
         &url
     ));
 }
@@ -126,7 +126,7 @@ fn test_check_domain_match_with_params_and_fragment() {
     let url = Url::parse("http://example.com/another/file?param=2#fragment3").unwrap();
     let host_name = "example.com";
     assert!(check_host(
-        &vec!(Host::parse(host_name).unwrap().to_owned()),
+        &[Host::parse(host_name).unwrap().to_owned()],
         &url
     ));
 }

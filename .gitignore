@@ -18,3 +18,5 @@ Cargo.lock
 
 # Ignore code coverage profiling output
 *.profraw
+
+*~
