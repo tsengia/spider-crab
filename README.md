@@ -43,6 +43,31 @@ Example:
 
 ```
 
+## Suppressing Errors
+If you want to ignore specific errors on specific pages, then you can write a `.spidercrab-ignore` file and place it in your working directory.  
+When spider-crab launches, it will read the file line by line for a `ignore-rule target-url` pairing, separated by any amount whitespace.  
+Lines starting with a `#` are comments and will be ignored.  
+
+The names of rules to ignore are printed between the parenthesis `()` of an error report when you run spider crab.
+For example, to ignore this error:
+```
+ERROR - SpiderError (missing-title): Page at "https://example-page.com/somewhere/something.html" does not have a title!
+```
+We would need to add this line to our `.spidercrab-ignore` file:
+```
+missing-title   https://example-page.com/somewhere/something.html
+```
+
+
+Example `.spidercrab-ignore` file:
+```
+# This line is a comment
+# Ignore that this page doesn't have a title. It's an archived page that we won't fix due to historic reasons
+missing-title   https://old-website.com/somewhere/something.html
+# Ignore the 400 HTTP status code this website returns. It's an external website that blocks spider crab
+http-error      https://another-website-somewhere.org/
+```
+
 ## Development
 `spider-crab` uses the default `cargo fmt` formatter and `cargo clippy` linter.
 
