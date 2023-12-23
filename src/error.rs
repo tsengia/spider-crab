@@ -1,8 +1,7 @@
 //! Holds the custom SpiderError struct used by spider crab
 
-use std::str::FromStr;
 use enum_iterator::{all, Sequence};
-
+use std::str::FromStr;
 
 #[derive(Debug, Eq, PartialEq, Hash, Sequence, Clone)]
 pub enum SpiderErrorType {
@@ -16,7 +15,7 @@ pub enum SpiderErrorType {
     #[doc(hidden)]
     FailedCrawl,
     #[doc(hidden)]
-    ParseError
+    ParseError,
 }
 
 impl SpiderErrorType {
@@ -30,7 +29,7 @@ impl SpiderErrorType {
             SpiderErrorType::MissingTitle => "missing-title",
             SpiderErrorType::EmptyScript => "empty-script",
             SpiderErrorType::FailedCrawl => "failed-crawl",
-            SpiderErrorType::ParseError => "parse-error"
+            SpiderErrorType::ParseError => "parse-error",
         }
     }
 }
@@ -39,13 +38,15 @@ impl FromStr for SpiderErrorType {
     type Err = SpiderError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-
         for e in all::<SpiderErrorType>().collect::<Vec<_>>() {
             if s == e.get_rule_name() {
                 return Ok(e);
             }
         }
-        Err(SpiderError { error_type: SpiderErrorType::ParseError, ..SpiderError::default() })
+        Err(SpiderError {
+            error_type: SpiderErrorType::ParseError,
+            ..SpiderError::default()
+        })
     }
 }
 
@@ -65,7 +66,12 @@ impl std::error::Error for SpiderError {}
 impl std::fmt::Display for SpiderError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let message = self.get_message();
-        write!(f, "SpiderError ({}): {}", self.error_type.get_rule_name(), message)
+        write!(
+            f,
+            "SpiderError ({}): {}",
+            self.error_type.get_rule_name(),
+            message
+        )
     }
 }
 

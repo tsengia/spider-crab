@@ -82,9 +82,10 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let f = File::open(".spidercrab-ignore");
     if f.is_ok() {
         info!("Found .spidercrab-ignore file! Parsing rules.");
-        spider_crab.options.read_ignore_list_from_file(".spidercrab-ignore");
-    }
-    else {
+        spider_crab
+            .options
+            .read_ignore_list_from_file(".spidercrab-ignore");
+    } else {
         info!("Did not find .spidercrab-ignore file.")
     }
 

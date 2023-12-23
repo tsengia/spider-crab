@@ -4,10 +4,10 @@ use log::info;
 use petgraph::graph::{DiGraph, NodeIndex};
 use reqwest::StatusCode;
 use scraper::{selector::CssLocalName, Selector};
-use std::io::{BufReader, BufRead};
+use std::io::{BufRead, BufReader};
 use std::str::FromStr;
-use std::{collections::HashMap, fs::File};
 use std::sync::Mutex;
+use std::{collections::HashMap, fs::File};
 use url::{Host, Url};
 
 pub mod algo;
@@ -84,7 +84,7 @@ pub struct SpiderOptions {
     /// Vector of hosts (domain names and IP addresses) that Spider Crab will traverse
     pub hosts: Vec<Host<String>>,
     /// List of patterns that the user has specified to ignore
-    pub ignore_patterns: HashMap<SpiderErrorType, Vec::<String>>
+    pub ignore_patterns: HashMap<SpiderErrorType, Vec<String>>,
 }
 
 impl SpiderOptions {
@@ -116,32 +116,45 @@ impl SpiderOptions {
                 return false;
             }
         }
-        return true;
+        true
     }
 
     pub fn read_ignore_list_from_file(&mut self, filepath: &str) {
         let ignore_file = File::open(filepath).unwrap();
         let reader = BufReader::new(ignore_file);
-        let mut line_num = 0;
         let mut count = 0;
-        for line in reader.lines() {
-            line_num += 1;
+        for (line_num, line) in reader.lines().enumerate() {
             if let Ok(line) = line {
                 let line = line.trim();
-                if line.starts_with("#") || line.is_empty() {
+                if line.starts_with('#') || line.is_empty() {
                     continue;
                 }
                 let mut parts = line.split_whitespace();
-                let rule = parts.next().expect(format!("Could not read ignore rule from line {} in the ignore file!", line_num).as_str());
-                let url = parts.next().expect(format!("Could not read URL from line {} in the ignore file!", line_num).as_str());
-                let error_type = SpiderErrorType::from_str(rule).expect(format!("Invalid ignore rule on line {} of ignore file!", line_num).as_str());
+                let rule = parts.next().unwrap_or_else(|| {
+                    panic!(
+                        "Could not read ignore rule from line {} in the ignore file!",
+                        line_num
+                    )
+                });
+                let url = parts.next().unwrap_or_else(|| {
+                    panic!(
+                        "Could not read URL from line {} in the ignore file!",
+                        line_num
+                    )
+                });
+                let error_type = SpiderErrorType::from_str(rule).unwrap_or_else(|_| {
+                    panic!("Invalid ignore rule on line {} of ignore file!", line_num)
+                });
 
-                if ! self.ignore_patterns.contains_key(&error_type) {
+                if !self.ignore_patterns.contains_key(&error_type) {
                     self.ignore_patterns.insert(error_type.clone(), Vec::new());
                 }
 
                 // The get_mut().unwrap() _should_ never panic because we check to make sure that the map contains the key right before this
-                self.ignore_patterns.get_mut(&error_type).unwrap().push(url.to_string());
+                self.ignore_patterns
+                    .get_mut(&error_type)
+                    .unwrap()
+                    .push(url.to_string());
                 count += 1;
             }
         }
@@ -159,7 +172,7 @@ impl Default for SpiderOptions {
             title_selector: Box::new(Selector::parse("title").expect("Invalid <title> selector!")),
             skip_class: CssLocalName::from("scrab-skip"),
             hosts: vec![],
-            ignore_patterns: HashMap::new()
+            ignore_patterns: HashMap::new(),
         }
     }
 }

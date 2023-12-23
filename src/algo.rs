@@ -145,7 +145,7 @@ pub async fn visit_page(
             let page = graph.node_weight_mut(node_index).unwrap();
             if contents.is_err() {
                 page.good = Some(false);
-                
+
                 if options.is_rule_enabled(SpiderErrorType::UnableToRetrieve, &url) {
                     error!("Failed to get contents of page! {}", url);
                     page.errors.push(SpiderError {
@@ -168,15 +168,13 @@ pub async fn visit_page(
             let title_element = title_element.next();
             if title_element.is_some() {
                 page.title = Some(title_element.unwrap().inner_html())
-            } else {
-                if options.is_rule_enabled(SpiderErrorType::MissingTitle, &url) {
-                    page.errors.push(SpiderError {
-                        error_type: SpiderErrorType::MissingTitle,
-                        source_page: Some(url.to_string()),
-                        ..SpiderError::default()
-                    });
-                    warn!("Page at {} does not have a title!", url.as_str());
-                }
+            } else if options.is_rule_enabled(SpiderErrorType::MissingTitle, &url) {
+                page.errors.push(SpiderError {
+                    error_type: SpiderErrorType::MissingTitle,
+                    source_page: Some(url.to_string()),
+                    ..SpiderError::default()
+                });
+                warn!("Page at {} does not have a title!", url.as_str());
             }
         }
 
@@ -211,23 +209,22 @@ pub async fn visit_page(
             if next_url.is_none() {
                 // Element did not contain a URL, but it was not required, so make sure it's innerHTML contains content
                 // This case only happens for <script> elements
-                if l.inner_html().trim().is_empty() {
-                    
-                    if options.is_rule_enabled(SpiderErrorType::EmptyScript, &url) {
-                        error!(
-                            "Script element at page {} is missing content!",
-                            url.as_str()
-                        );
+                if l.inner_html().trim().is_empty()
+                    && options.is_rule_enabled(SpiderErrorType::EmptyScript, &url)
+                {
+                    error!(
+                        "Script element at page {} is missing content!",
+                        url.as_str()
+                    );
 
-                        found_problem = true;
+                    found_problem = true;
 
-                        let page = graph.node_weight_mut(node_index).unwrap();
-                        page.errors.push(SpiderError {
-                            error_type: SpiderErrorType::EmptyScript,
-                            source_page: Some(url.to_string()),
-                            ..SpiderError::default()
-                        });
-                    }
+                    let page = graph.node_weight_mut(node_index).unwrap();
+                    page.errors.push(SpiderError {
+                        error_type: SpiderErrorType::EmptyScript,
+                        source_page: Some(url.to_string()),
+                        ..SpiderError::default()
+                    });
                 }
                 continue;
             }

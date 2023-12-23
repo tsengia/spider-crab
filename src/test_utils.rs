@@ -43,7 +43,7 @@ impl SpiderTestPage<'_> {
     pub fn setup_mock(&mut self, server: &mut ServerGuard) {
         self.absolute_url = Some(
             Url::parse(format!("{}{}", server.url().as_str(), self.url).as_str())
-                .expect(format!("Invalid URL for test page: {}!", self.url).as_str()),
+                .unwrap_or_else(|_| panic!("Invalid URL for test page: {}!", self.url)),
         );
 
         let mut mock = server
@@ -141,16 +141,14 @@ impl SpiderTestPage<'_> {
                     "Recorded title does not match expected value for page!\n{:?}",
                     self
                 );
-            } else {
-                if self.content_type.is_some() && self.content_type.unwrap() == "text/html" {
-                    assert!(
-                        page.errors
-                            .iter()
-                            .any(|e: &SpiderError| e.error_type == SpiderErrorType::MissingTitle),
-                        "Page has a title and is HTML, but no title recorded! {:?}",
-                        self
-                    );
-                }
+            } else if self.content_type.is_some() && self.content_type.unwrap() == "text/html" {
+                assert!(
+                    page.errors
+                        .iter()
+                        .any(|e: &SpiderError| e.error_type == SpiderErrorType::MissingTitle),
+                    "Page has a title and is HTML, but no title recorded! {:?}",
+                    self
+                );
             }
 
             if self.status_code > 299 {
@@ -198,12 +196,12 @@ impl<'a> SpiderTestServer<'a> {
         for p in self.pages.iter_mut() {
             p.assert(&mut self.spider_crab);
         }
-        return result;
+        result
     }
 
     pub fn add_page(&mut self, page: &'a mut SpiderTestPage<'a>) -> &mut Self {
         self.pages.push(page);
-        return self;
+        self
     }
 
     pub fn assert_page_count(&mut self, expected_pages: usize) {
