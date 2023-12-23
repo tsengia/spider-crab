@@ -10,6 +10,7 @@ use url::{Host, Url};
 pub mod algo;
 pub mod dot;
 pub mod error;
+pub mod ignore_rules;
 pub mod url_helpers;
 
 #[cfg(test)]
