@@ -1,0 +1,27 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: Release
+    env:
+      RUSTFLAGS: "-Dwarnings"
+    steps:
+    - name: Build
+      run: cargo build --release --locked
+    - name: Upload
+      uses: svenstaro/upload-release-action@v1-release
+      with:
+        repo_token: ${{ secrets.SPIDER_CRAB_TOKEN }}
+        file: target/release/spider-crab
+        asset_name: spider-crab-linux-amd64
+        tag: ${{ github.ref }}
+        overwrite: false
