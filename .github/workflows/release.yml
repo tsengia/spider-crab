@@ -17,10 +17,11 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build
-      run: cargo build --release --locked
+      run: |
+        cargo build --release --locked
+        mv target/release/spider-crab target/release/spider-crab-linux-amd64
     - name: Upload
       uses: ncipollo/release-action@v1
       with:
-        artifacts: target/release/spider-crab
-        tag: ${{ github.ref }}
+        artifacts: target/release/spider-crab-linux-amd64
         allowUpdates: false
