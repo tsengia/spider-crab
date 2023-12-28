@@ -15,17 +15,17 @@ If Spider Crab finds the following, then it will return a non-zero exit code:
 If Spider Crab does not find any issues, then it will return a `0` exit code.
 
 ```
-Usage: spider-crab [OPTIONS] <url>
+Usage: spider-crab.exe [OPTIONS] <url>
 
 Arguments:
   <url>  URL of the webpage to check.
 
 Options:
   -d, --depth <depth>  Depth of links to check. Default is -1 which is unlimited. [default: -1]
-  -q, --quiet          Do not print to STDOUT or STDERR.
-  -v, --verbose        Print more log messages. Append additional 'v' characters to increase verbosity.
+  -q                   Silence logging output.
+  -v...                Print more log messages.
+  -o, --dot <dot>      Save output to file in graphiz Dot format.
   -h, --help           Print help
-  -V, --version        Print version
 ```
 
 Example:
@@ -44,11 +44,11 @@ Example:
 ```
 
 ## Suppressing Errors
-If you want to ignore specific errors on specific pages, then you can write a `.spidercrab-ignore` file and place it in your working directory.  
-When spider-crab launches, it will read the file line by line for a `ignore-rule target-url` pairing, separated by any amount whitespace.  
+If you want to ignore specific errors on specific pages, then you can write a `.spidercrab-ignore` file and place it in your working directory. 
+When spider-crab launches, it will read the file line by line for a `ignore-rule target-url` pairing, separated by any amount whitespace. 
 Lines starting with a `#` are comments and will be ignored.  
 
-The names of rules to ignore are printed between the parenthesis `()` of an error report when you run spider crab.
+The names of rules to ignore are printed between the parenthesis `()` of an error report when you run spider crab.  
 For example, to ignore this error:
 ```
 ERROR - SpiderError (missing-title): Page at "https://example-page.com/somewhere/something.html" does not have a title!
@@ -59,7 +59,7 @@ missing-title   https://example-page.com/somewhere/something.html
 ```
 
 
-Example `.spidercrab-ignore` file:
+Here is a more complete example of an `.spidercrab-ignore` file:
 ```
 # This line is a comment
 # Ignore that this page doesn't have a title. It's an archived page that we won't fix due to historic reasons
