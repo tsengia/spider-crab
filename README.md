@@ -69,6 +69,9 @@ http-error      https://another-website-somewhere.org/
 ```
 
 ## Development
+Since version 1.0.0, `spider-crab` uses the [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) standard for commit messages.
+However, if you make contributions that do not follow the Conventional Commits standard, then a maintainer will squash your commits and make a merge commit that follows the Conventional Commits standard.
+
 `spider-crab` uses the default `cargo fmt` formatter and `cargo clippy` linter.
 
 To run the integration tests, run: `cargo test`.
@@ -103,3 +106,13 @@ cargo test
 ```bash
 grcov . --binary-path ./target/debug/deps/ -s . -t html --branch --ignore-not-existing --ignore '../*' --ignore "/*" --ignore 'target/*/build/*5ever' -o target/coverage/html
 ```
+
+## Release Process
+This repo uses two workflows in `.github/workflows`:
+- `lint_fmt_test.yml` - Checks Pull Requests, runs formatter, clippy, `cargo check`, `cargo test`, and ensures that the version number in `Cargo.toml` was bumped.
+- `release.yml` - Performs a `cargo build --release` and uploads the compiled binary to GitHub
+
+To make a new release, perform the following:
+- Make a tag on the `main` branch that matches the version number in `Cargo.toml`. Update `Cargo.toml` if necessary.
+- Push the tag.
+- Watch for the GitHub workflow to finish and upload the build artifacts.
