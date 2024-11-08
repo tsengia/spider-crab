@@ -33,6 +33,8 @@ Example:
 spider-crab -v https://example.com
 ```
 
+![GIF of me using spider crab to check my own website for broken links. Yellow status text scrolls by telling me the pages it is skipping checking because their content type is not HTML.](spider-crab-record.gif)
+
 ## Skipping Links
 If you do not want Spider Crab to check a link/element on your webpage, add the `scrab-skip` CSS class to the link.
 
